@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AltaLock - Sécurité Faciale</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">AltaLock</div>
+            <nav class="main-nav">
+                <a href="#" class="active">Dashboard</a>
+                <a href="#">Utilisateurs</a>
+                <a href="#">Paramètres</a>
+                <a href="#">Historique</a>
+            </nav>
+            <div class="user-profile">
+                <img src="assets/default-avatar.png" alt="Profile" class="avatar">
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="dashboard-grid">
+                <section class="video-feed">
+                    <h2>Flux Vidéo en Direct</h2>
+                    <div class="video-container">
+                        <video id="videoElement" autoplay></video>
+                        <div class="detection-overlay" id="detectionOverlay"></div>
+                    </div>
+                </section>
+
+                <section class="users-panel">
+                    <h2>Utilisateurs Autorisés</h2>
+                    <div class="users-grid" id="usersGrid">
+                        <!-- Les utilisateurs seront ajoutés dynamiquement ici -->
+                    </div>
+                </section>
+
+                <section class="status-panel">
+                    <h2>État du Système</h2>
+                    <div class="status-items">
+                        <div class="status-item">
+                            <span class="status-label">État</span>
+                            <span class="status-value active">Actif</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Dernière détection</span>
+                            <span class="status-value">Il y a 2 min</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="activity-log">
+                    <h2>Journal d'Activité</h2>
+                    <div class="log-container" id="logContainer">
+                        <!-- Les événements seront ajoutés dynamiquement ici -->
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>

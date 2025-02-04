@@ -1,0 +1,19 @@
+{
+  "name": "altalock",
+  "version": "1.0.0",
+  "description": "Application de sécurité avec reconnaissance faciale",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --debug"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@mui/material": "^5.14.10",
+    "@mui/icons-material": "^5.14.10",
+    "electron": "^26.2.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}
