@@ -73,11 +73,10 @@ npm run dev
 
 ### Premier lancement
 
-1. Cliquez sur "Importer depuis l'ancienne app" si vous avez des visages existants
-2. Ou ajoutez un nouvel utilisateur avec le bouton "+ Ajouter"
-3. Capturez votre visage via la webcam
-4. Cochez "Propriétaire" pour vous définir comme utilisateur principal
-5. Cliquez sur "Démarrer la surveillance"
+1.ajoutez un nouvel utilisateur avec le bouton "+ Ajouter"
+2. Capturez votre visage via la webcam
+3. Cochez "Propriétaire" pour vous définir comme utilisateur principal
+4. Cliquez sur "Démarrer la surveillance"
 
 ### Logique de sécurité
 
