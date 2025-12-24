@@ -1,7 +1,17 @@
+# Core
 face-recognition==1.3.0
 opencv-python==4.8.1.78
 numpy==1.24.3
+
+# Backend API
 Flask==2.3.3
 Flask-SocketIO==5.3.6
+Flask-CORS==4.0.0
 python-dotenv==1.0.0
 requests==2.31.0
+
+# Alertes
+pyttsx3==2.90
+
+# Optionnel - Screenshot Windows
+mss==9.0.1

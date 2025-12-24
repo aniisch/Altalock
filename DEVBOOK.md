@@ -1,8 +1,8 @@
 # AltaLock - Journal de Développement
 
 ## État du projet
-🟡 En cours de développement
-📅 Dernière mise à jour : 04/02/2025
+🟢 **v2.0 - Architecture implémentée**
+📅 Dernière mise à jour : 24/12/2025
 
 ## Légende
 - ✅ Terminé
@@ -10,7 +10,9 @@
 - ⭕ Non commencé
 - ❌ Bloqué/Problèmes
 
-## 1. Configuration initiale 🟡
+---
+
+## 1. Configuration initiale ✅
 ### 1.1 Environnement de développement
 - [x] Installation de Python et des dépendances (OpenCV, Dlib, face_recognition)
 - [x] Configuration de l'environnement virtuel
@@ -18,91 +20,169 @@
 - [x] Mise en place de Git et structure du projet
 
 ### 1.2 Configuration des outils
-- [ ] Configuration de la webcam et des permissions
-- [ ] Configuration de l'API SharePoint
-- [ ] Mise en place de l'environnement de test
+- [x] Structure du projet créée (backend/, frontend/, data/, assets/)
+- [x] Fichiers de configuration (.env.example, requirements.txt, package.json)
+- [ ] Configuration de l'API SharePoint (optionnel, pour plus tard)
 
-## 2. Module de reconnaissance faciale ⭕
+---
+
+## 2. Module de reconnaissance faciale ✅
 ### 2.1 Capture d'image
-- [ ] Implémentation de la capture vidéo avec OpenCV
-- [ ] Optimisation du taux de capture
-- [ ] Gestion des erreurs de la webcam
-- [ ] Prétraitement des images capturées
+- [x] Implémentation de la capture vidéo avec OpenCV
+- [x] Optimisation du taux de capture (frame_skip configurable)
+- [x] Gestion des erreurs de la webcam
+- [x] Prétraitement des images (réduction 25% pour performance)
 
 ### 2.2 Détection de visage
-- [ ] Intégration de l'algorithme de détection avec Dlib
-- [ ] Optimisation des paramètres de détection
-- [ ] Gestion des cas particuliers (luminosité, angles)
-- [ ] Mise en cache des résultats pour optimisation
+- [x] Intégration de l'algorithme de détection avec face_recognition
+- [x] Paramètres de détection configurables (tolerance)
+- [x] Gestion des cas multiples visages
+- [x] Encodage vers base64 pour WebSocket
 
 ### 2.3 Reconnaissance faciale
-- [ ] Implémentation de l'encodage des visages
-- [ ] Création de la base de données des visages
-- [ ] Algorithme de comparaison et seuil de confiance
-- [ ] Optimisation des performances
+- [x] Implémentation de l'encodage des visages (128 dimensions)
+- [x] Base de données SQLite pour les encodages
+- [x] Algorithme de comparaison avec seuil de confiance
+- [x] Cache des encodages en mémoire pour performance
 
-## 3. Gestion des utilisateurs ⭕
+**Fichier principal:** `backend/services/face_recognition_service.py`
+
+---
+
+## 3. Gestion des utilisateurs ✅
 ### 3.1 Base de données
-- [ ] Conception du schéma de la base de données
-- [ ] Implémentation du CRUD utilisateurs
-- [ ] Système de hachage des données sensibles
-- [ ] Gestion des sessions utilisateurs
+- [x] Schéma SQLite (users, face_encodings, settings, logs)
+- [x] CRUD utilisateurs complet
+- [x] Gestion des sessions via Flask
+- [x] Index pour performance
 
 ### 3.2 Gestion des visages
-- [ ] Interface d'ajout de nouveaux visages
-- [ ] Système de suppression et mise à jour
-- [ ] Intégration avec SharePoint pour la synchronisation
-- [ ] Gestion des versions des données biométriques
+- [x] Upload d'images pour nouveaux visages
+- [x] Capture depuis webcam
+- [x] Suppression avec cascade
+- [x] Import depuis l'ancienne app (RD-face_recognition-master)
 
-## 4. Système de sécurité ⭕
+**Fichiers:** `backend/models/`, `backend/routes/users.py`
+
+---
+
+## 4. Système de sécurité ✅
 ### 4.1 Verrouillage de session
-- [ ] Développement du mécanisme de verrouillage Windows
-- [ ] Système de comptage des détections
-- [ ] Interface de déverrouillage
-- [ ] Gestion des cas d'urgence et backup
+- [x] Verrouillage Windows via ctypes
+- [x] Compteur de détections consécutives
+- [x] Seuil configurable (detection_threshold)
+- [x] Capture automatique lors d'intrusion
 
 ### 4.2 Système d'alertes
-- [ ] Implémentation du système d'emails
-- [ ] Développement des alertes vocales
-- [ ] Interface de configuration des alertes
-- [ ] Système de logs et historique
+- [x] Alertes email via SMTP
+- [x] Text-to-Speech avec pyttsx3
+- [x] Configuration via paramètres
+- [x] Logs complets avec historique
 
-## 5. Interface utilisateur ⭕
+**Fichiers:** `backend/services/alert_service.py`, `backend/services/security_service.py`
+
+---
+
+## 5. Interface utilisateur ✅
 ### 5.1 Frontend
-- [ ] Design de l'interface utilisateur
-- [ ] Implémentation des composants React
-- [ ] Système de navigation
-- [ ] Thème et responsive design
+- [x] Design moderne dark theme
+- [x] Vanilla JS (pas de React, simplifié)
+- [x] WebSocket pour temps réel
+- [x] Navigation Dashboard/Users/Settings/History
+- [x] Notifications toast
 
 ### 5.2 Backend API
-- [ ] Architecture REST API
-- [ ] Implémentation des endpoints
-- [ ] Sécurisation de l'API
-- [ ] Documentation de l'API
+- [x] Architecture REST API complète
+- [x] WebSocket avec Flask-SocketIO
+- [x] CORS configuré
+- [x] Endpoints documentés dans PLAN.md
 
-## 6. Packaging et déploiement ⭕
+**Fichiers:** `backend/app.py`, `frontend/renderer.js`
+
+---
+
+## 6. Packaging et déploiement 🟡
 ### 6.1 Electron
-- [ ] Configuration d'Electron
-- [ ] Intégration du frontend
-- [ ] Gestion des permissions système
-- [ ] Tests de performance
+- [x] Configuration sécurisée (contextIsolation, preload)
+- [x] Intégration frontend complète
+- [x] Démarrage automatique du backend Python
+- [x] Icône système tray
 
 ### 6.2 Distribution
+- [x] Configuration electron-builder
 - [ ] Création de l'installateur Windows
-- [ ] Scripts de déploiement
-- [ ] Documentation utilisateur
-- [ ] Documentation technique
+- [ ] Tests sur Windows
+- [ ] Documentation utilisateur finale
+
+**Fichiers:** `frontend/main.js`, `frontend/package.json`
+
+---
+
+## API Endpoints
+
+### Users
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/users` | Liste tous les utilisateurs |
+| GET | `/api/users/:id` | Détails d'un utilisateur |
+| POST | `/api/users` | Créer un utilisateur |
+| DELETE | `/api/users/:id` | Supprimer un utilisateur |
+| POST | `/api/users/:id/faces` | Ajouter un visage (upload) |
+| POST | `/api/users/:id/faces/capture` | Capturer un visage (webcam) |
+
+### Settings
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/settings` | Tous les paramètres |
+| PUT | `/api/settings` | Mettre à jour |
+
+### System
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/status` | État du système |
+| POST | `/api/detection/start` | Démarrer détection |
+| POST | `/api/detection/stop` | Arrêter détection |
+| POST | `/api/import-legacy` | Importer anciens visages |
+
+---
 
 ## Journal des modifications
-### 04/02/2025
+
+### 24/12/2025 - v2.0 Architecture complète
+- ✨ Refonte complète de l'architecture
+- ✨ Backend Flask avec API REST et WebSocket
+- ✨ Base de données SQLite
+- ✨ Service de reconnaissance faciale modulaire
+- ✨ Services d'alertes (email + TTS)
+- ✨ Service de sécurité (verrouillage Windows)
+- ✨ Frontend Electron moderne et sécurisé
+- ✨ Design dark theme professionnel
+- 📝 Documentation complète (PLAN.md, DEVBOOK.md)
+
+### 04/02/2025 - v1.0 Setup initial
 - 📝 Création initiale du DEVBOOK
-- 📝 Définition des étapes de développement détaillées
+- 📝 Définition des étapes de développement
 - ✨ Mise en place de la structure du projet
 - ✨ Création de l'interface utilisateur moderne
-- 📦 Ajout des fichiers de configuration (package.json, requirements.txt)
+- 📦 Ajout des fichiers de configuration
 
-## Notes importantes
-- Suivre la méthodologie TDD pour chaque fonctionnalité
-- Faire des commits réguliers avec des messages descriptifs
-- Mettre à jour ce document après chaque session de développement
-- Documenter les problèmes rencontrés et leurs solutions
+---
+
+## Prochaines étapes
+
+1. **Tests sur Windows**
+   - Vérifier le verrouillage Windows
+   - Tester la webcam
+   - Valider l'envoi d'emails
+
+2. **Import des utilisateurs existants**
+   - Utiliser `/api/import-legacy` pour importer les 22 visages de l'ancienne app
+
+3. **Packaging Windows**
+   - `cd frontend && npm run build:win`
+   - Tester l'installateur
+
+4. **Améliorations futures**
+   - Intégration SharePoint
+   - Mode multi-utilisateurs owners
+   - Historique des captures avec galerie
