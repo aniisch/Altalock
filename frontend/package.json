@@ -1,0 +1,28 @@
+{
+  "name": "altalock",
+  "version": "2.0.0",
+  "description": "Application de securite avec reconnaissance faciale",
+  "main": "main.js",
+  "author": "aniisch",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "make": "electron-forge make",
+    "make:win": "electron-forge make --platform win32",
+    "make:linux": "electron-forge make --platform linux",
+    "package": "electron-forge package"
+  },
+  "dependencies": {
+    "electron-squirrel-startup": "^1.0.0"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.2.0",
+    "@electron-forge/maker-squirrel": "^7.2.0",
+    "@electron-forge/maker-zip": "^7.2.0",
+    "electron": "^28.0.0"
+  },
+  "config": {
+    "forge": "./forge.config.js"
+  }
+}

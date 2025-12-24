@@ -1,19 +1,22 @@
 {
-  "name": "altalock",
-  "version": "1.0.0",
-  "description": "Application de sécurité avec reconnaissance faciale",
-  "main": "main.js",
+  "name": "altalock-project",
+  "version": "2.0.0",
+  "description": "AltaLock - Application de sécurité avec reconnaissance faciale",
+  "private": true,
   "scripts": {
-    "start": "electron .",
-    "dev": "electron . --debug"
+    "install:frontend": "cd frontend && npm install",
+    "install:backend": "pip install -r requirements.txt",
+    "install": "npm run install:frontend && npm run install:backend",
+    "start:backend": "python backend/app.py",
+    "start:frontend": "cd frontend && npm start",
+    "start": "start cmd /k \"npm run start:backend\" && timeout /t 3 && npm run start:frontend",
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build:win"
   },
-  "dependencies": {
-    "@emotion/react": "^11.11.1",
-    "@emotion/styled": "^11.11.0",
-    "@mui/material": "^5.14.10",
-    "@mui/icons-material": "^5.14.10",
-    "electron": "^26.2.1",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  }
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aniisch/Altalock"
+  },
+  "author": "aniisch",
+  "license": "MIT"
 }
