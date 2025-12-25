@@ -14,21 +14,11 @@ module.exports = {
       /\.log$/
     ],
     extraResource: [
-      './backend'
+      path.join(__dirname, 'backend')
     ]
   },
   rebuildConfig: {},
   makers: [
-    {
-      name: '@electron-forge/maker-squirrel',
-      config: {
-        name: 'AltaLock',
-        authors: 'aniisch',
-        description: 'Application de securite avec reconnaissance faciale',
-        setupIcon: path.join(__dirname, '..', 'assets', 'icons', 'icon.ico'),
-        noMsi: true
-      }
-    },
     {
       name: '@electron-forge/maker-zip',
       platforms: ['darwin', 'linux', 'win32']

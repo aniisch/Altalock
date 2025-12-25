@@ -11,15 +11,16 @@ class UserModel:
     """Gestion des utilisateurs et de leurs encodages faciaux"""
 
     @staticmethod
-    def create(name: str, email: str = None, is_owner: bool = False) -> int:
+    def create(name: str, email: str = None, is_owner: bool = False,
+               is_blacklisted: bool = False, custom_message: str = None) -> int:
         """Crée un nouvel utilisateur"""
         db = get_db()
         with db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO users (name, email, is_owner)
-                VALUES (?, ?, ?)
-            """, (name, email, is_owner))
+                INSERT INTO users (name, email, is_owner, is_blacklisted, custom_message)
+                VALUES (?, ?, ?, ?, ?)
+            """, (name, email, is_owner, is_blacklisted, custom_message))
             conn.commit()
             return cursor.lastrowid
 
@@ -48,7 +49,7 @@ class UserModel:
     @staticmethod
     def update(user_id: int, **kwargs) -> bool:
         """Met à jour un utilisateur"""
-        allowed_fields = {"name", "email", "is_owner", "is_active"}
+        allowed_fields = {"name", "email", "is_owner", "is_active", "is_blacklisted", "custom_message"}
         updates = {k: v for k, v in kwargs.items() if k in allowed_fields}
 
         if not updates:
@@ -65,6 +66,12 @@ class UserModel:
             cursor.execute(f"UPDATE users SET {set_clause} WHERE id = ?", values)
             conn.commit()
             return cursor.rowcount > 0
+
+    @staticmethod
+    def get_blacklisted() -> List[dict]:
+        """Récupère les utilisateurs blacklistés"""
+        db = get_db()
+        return db.fetch_all("SELECT * FROM users WHERE is_blacklisted = TRUE AND is_active = TRUE")
 
     @staticmethod
     def delete(user_id: int) -> bool:
@@ -115,7 +122,7 @@ class UserModel:
         """Récupère tous les encodages faciaux avec les infos utilisateur"""
         db = get_db()
         rows = db.fetch_all("""
-            SELECT fe.*, u.name as user_name, u.is_owner
+            SELECT fe.*, u.name as user_name, u.is_owner, u.is_blacklisted, u.custom_message
             FROM face_encodings fe
             JOIN users u ON fe.user_id = u.id
             WHERE u.is_active = TRUE

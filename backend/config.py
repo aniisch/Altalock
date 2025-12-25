@@ -45,8 +45,8 @@ class Config:
 
 # Paramètres par défaut pour la DB
 DEFAULT_SETTINGS = {
-    "detection_threshold": "4",
-    "unknownThreshold": "3",
+    "detection_threshold": "9",   # 3 secondes * 3 détections/sec
+    "unknownThreshold": "9",      # 3 secondes * 3 détections/sec
     "frame_skip": "2",
     "tolerance": "0.6",
     "alert_email": "",

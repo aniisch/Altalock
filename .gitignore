@@ -172,3 +172,8 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 node_modules
+/data/
+data/altalock.db
+PLAN.md
+frontend/backend/
+frontend/out/

@@ -1,6 +1,12 @@
 """Routes API pour les logs"""
 import json
+import sys
+import functools
+import traceback
 from flask import Blueprint, request, jsonify
+
+# Forcer les logs dans stderr
+print = functools.partial(print, file=sys.stderr, flush=True)
 
 from backend.services.alert_service import get_alert_service
 
@@ -108,29 +114,39 @@ def get_stats():
 @logs_bp.route("", methods=["DELETE"])
 def clear_logs():
     """Supprime les logs (avec filtre optionnel)"""
-    event_type = request.args.get("type")
-    days = request.args.get("older_than_days", type=int)
+    try:
+        print("[CLEAR LOGS] Début de la suppression des logs...")
+        event_type = request.args.get("type")
+        days = request.args.get("older_than_days", type=int)
 
-    from backend.models.database import get_db
-    db = get_db()
+        from backend.models.database import get_db
+        db = get_db()
 
-    query = "DELETE FROM logs WHERE 1=1"
-    params = []
+        query = "DELETE FROM logs WHERE 1=1"
+        params = []
 
-    if event_type:
-        query += " AND event_type = ?"
-        params.append(event_type)
+        if event_type:
+            query += " AND event_type = ?"
+            params.append(event_type)
 
-    if days:
-        query += " AND created_at < datetime('now', ?)"
-        params.append(f"-{days} days")
+        if days:
+            query += " AND created_at < datetime('now', ?)"
+            params.append(f"-{days} days")
 
-    with db.get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(query, params)
-        deleted = cursor.rowcount
-        conn.commit()
+        print(f"[CLEAR LOGS] Query: {query}, Params: {params}")
 
-    return jsonify({
-        "message": f"{deleted} log(s) supprimé(s)"
-    })
+        with db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            deleted = cursor.rowcount
+            conn.commit()
+
+        print(f"[CLEAR LOGS] {deleted} log(s) supprimé(s)")
+        return jsonify({
+            "message": f"{deleted} log(s) supprimé(s)"
+        })
+
+    except Exception as e:
+        print(f"[CLEAR LOGS] EXCEPTION: {e}")
+        print(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500

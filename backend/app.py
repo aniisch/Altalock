@@ -2,12 +2,22 @@
 import os
 import sys
 
+# Forcer l'affichage des logs dans stderr (visible dans Electron)
+import functools
+print = functools.partial(print, file=sys.stderr, flush=True)
+
 # Ajouter le dossier parent au path pour les imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from flask import Flask, jsonify
+# Charger les variables d'environnement depuis .env
+from dotenv import load_dotenv
+env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+load_dotenv(env_path)
+
+from flask import Flask, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
+import os
 
 from backend.config import Config
 from backend.routes import users_bp, settings_bp, logs_bp
@@ -32,6 +42,22 @@ app.register_blueprint(settings_bp)
 app.register_blueprint(logs_bp)
 
 
+# --- Gestionnaire d'erreurs global (forcer JSON) ---
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """Attrape toutes les exceptions et retourne du JSON"""
+    import traceback
+    print(f"[GLOBAL ERROR] {type(e).__name__}: {e}")
+    print(traceback.format_exc())
+    return jsonify({"error": str(e), "type": type(e).__name__}), 500
+
+@app.errorhandler(500)
+def handle_500(e):
+    """Erreur 500"""
+    print(f"[ERROR 500] {e}")
+    return jsonify({"error": "Erreur interne du serveur"}), 500
+
+
 # --- Routes système ---
 
 @app.route("/api/status", methods=["GET"])
@@ -51,33 +77,50 @@ def get_status():
 @app.route("/api/detection/start", methods=["POST"])
 def start_detection():
     """Démarre la détection"""
-    face_service = get_face_service()
+    try:
+        print("[START] Demande de démarrage de la détection...")
+        face_service = get_face_service()
 
-    if face_service.is_running:
-        return jsonify({"message": "Détection déjà en cours"})
+        if face_service.is_running:
+            print("[START] Détection déjà en cours")
+            return jsonify({"message": "Détection déjà en cours"})
 
-    # Charger les encodages
-    count = face_service.load_encodings()
+        # Charger les encodages
+        print("[START] Chargement des encodages...")
+        count = face_service.load_encodings()
+        print(f"[START] {count} encodages chargés")
 
-    if count == 0:
+        if count == 0:
+            print("[START] ERREUR: Aucun visage enregistré")
+            return jsonify({
+                "error": "Aucun visage enregistré. Ajoutez des utilisateurs d'abord."
+            }), 400
+
+        # Démarrer la caméra
+        print("[START] Démarrage de la caméra...")
+        if not face_service.start_camera():
+            print("[START] ERREUR: Impossible d'accéder à la caméra")
+            return jsonify({"error": "Impossible d'accéder à la caméra"}), 500
+
+        print("[START] Caméra démarrée, lancement de la boucle de détection...")
+
+        # Démarrer la boucle de détection
+        face_service.start_detection_loop(
+            frame_callback=on_frame,
+            detection_callback=on_detection
+        )
+
+        print(f"[START] Détection démarrée avec {count} visages")
         return jsonify({
-            "error": "Aucun visage enregistré. Ajoutez des utilisateurs d'abord."
-        }), 400
+            "message": "Détection démarrée",
+            "encodings_loaded": count
+        })
 
-    # Démarrer la caméra
-    if not face_service.start_camera():
-        return jsonify({"error": "Impossible d'accéder à la caméra"}), 500
-
-    # Démarrer la boucle de détection
-    face_service.start_detection_loop(
-        frame_callback=on_frame,
-        detection_callback=on_detection
-    )
-
-    return jsonify({
-        "message": "Détection démarrée",
-        "encodings_loaded": count
-    })
+    except Exception as e:
+        import traceback
+        print(f"[START] EXCEPTION: {e}")
+        print(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/detection/stop", methods=["POST"])
@@ -119,10 +162,25 @@ def system_info():
     return jsonify(get_system_info())
 
 
+@app.route("/data/captures/<path:filename>")
+def serve_capture(filename):
+    """Sert les images de captures"""
+    from backend.config import DATA_DIR
+    captures_dir = DATA_DIR / "captures"
+    return send_from_directory(str(captures_dir), filename)
+
+
 # --- Callbacks WebSocket ---
+
+_frame_count = 0
 
 def on_frame(frame_b64: str, detections: list):
     """Appelé pour chaque frame traité"""
+    global _frame_count
+    _frame_count += 1
+    if _frame_count % 30 == 1:  # Log toutes les 30 frames (~1 sec)
+        print(f"[FRAME] Envoi frame #{_frame_count}")
+
     socketio.emit("frame", {
         "image": frame_b64,
         "faces": [
@@ -130,6 +188,8 @@ def on_frame(frame_b64: str, detections: list):
                 "user_id": d.user_id,
                 "name": d.name,
                 "is_owner": d.is_owner,
+                "is_blacklisted": d.is_blacklisted,
+                "custom_message": d.custom_message,
                 "confidence": d.confidence,
                 "box": d.box
             }
@@ -142,17 +202,31 @@ def on_detection(detections: list):
     """Appelé quand des visages sont détectés"""
     face_service = get_face_service()
 
+    # Récupérer le seuil pour le log
+    from backend.models.settings import SettingsModel
+    threshold = SettingsModel.get_int("unknownThreshold") or 9
+
+    # Log du compteur d'inconnus
+    names = [d.name for d in detections]
+    print(f"[DETECTION] {names} | Compteur: {face_service.consecutive_unknown}/{threshold}")
+
     # Vérifier si une alerte doit être déclenchée
     if face_service.should_trigger_alert():
+        print(f"[ALERTE] Seuil atteint ({threshold})! Déclenchement...")
         alert_service = get_alert_service()
         security_service = get_security_service()
 
-        # Trouver le nom de l'intrus
+        # Trouver l'intrus (priorité aux blacklistés, puis aux inconnus)
         intruder = next(
-            (d for d in detections if not d.is_owner),
-            detections[0] if detections else None
+            (d for d in detections if d.is_blacklisted),
+            next(
+                (d for d in detections if not d.is_owner),
+                detections[0] if detections else None
+            )
         )
         intruder_name = intruder.name if intruder else "Inconnu"
+        is_blacklisted = intruder.is_blacklisted if intruder else False
+        custom_message = intruder.custom_message if intruder else None
 
         # Capturer le frame actuel
         frame = face_service.get_frame()
@@ -160,13 +234,19 @@ def on_detection(detections: list):
         if frame is not None:
             capture_path = security_service.capture_frame(frame, "intrusion")
 
-        # Déclencher l'alerte
+        # Déclencher l'alerte avec message personnalisé
         alert_service.trigger_alert(
             alert_type="intrusion",
             detected_name=intruder_name,
             image_path=capture_path,
-            user_id=intruder.user_id if intruder else None
+            user_id=intruder.user_id if intruder else None,
+            custom_message=custom_message,
+            is_blacklisted=is_blacklisted
         )
+
+        # Attendre que le message vocal soit prononcé avant de verrouiller
+        import time
+        time.sleep(3)  # 3 secondes pour laisser le TTS finir
 
         # Réponse de sécurité (verrouillage)
         security_result = security_service.trigger_security_response(
@@ -174,10 +254,18 @@ def on_detection(detections: list):
             detected_name=intruder_name
         )
 
+        # Message d'alerte adapté
+        if is_blacklisted:
+            alert_msg = f"Personne blacklistée détectée: {intruder_name}"
+        else:
+            alert_msg = f"Accès non autorisé: {intruder_name}"
+
         # Émettre l'événement d'alerte
         socketio.emit("alert", {
             "type": "intrusion",
-            "message": f"Accès non autorisé: {intruder_name}",
+            "message": alert_msg,
+            "intruder_name": intruder_name,
+            "is_blacklisted": is_blacklisted,
             "locked": security_result["locked"],
             "capture_path": capture_path
         })
@@ -298,4 +386,4 @@ if __name__ == "__main__":
     app, socketio = create_app()
     print("Démarrage du serveur AltaLock...")
     print("API disponible sur http://localhost:5000")
-    socketio.run(app, host="0.0.0.0", port=5000, debug=Config.DEBUG)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=Config.DEBUG, allow_unsafe_werkzeug=True)

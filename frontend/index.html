@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io; connect-src 'self' http://localhost:5000 ws://localhost:5000 https://cdn.socket.io; img-src 'self' data: file:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io; connect-src 'self' http://localhost:5000 ws://localhost:5000 https://cdn.socket.io; img-src 'self' data: file: http://localhost:5000; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com;">
     <title>AltaLock - Sécurité Faciale</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
     <link rel="stylesheet" href="styles.css">
@@ -118,10 +118,20 @@
             <div id="page-users" class="page">
                 <div class="page-header">
                     <h1>Gestion des Utilisateurs</h1>
-                    <button id="addUserBtnPage" class="btn btn-primary">+ Ajouter un utilisateur</button>
+                    <div class="header-actions">
+                        <button id="addUserBtnPage" class="btn btn-primary">+ Ajouter autorisé</button>
+                        <button id="addBlacklistBtn" class="btn btn-danger">+ Ajouter blacklist</button>
+                    </div>
                 </div>
+
+                <h3 class="section-title">Utilisateurs Autorisés</h3>
                 <div class="users-full-grid" id="usersFullGrid">
                     <div class="loading">Chargement...</div>
+                </div>
+
+                <h3 class="section-title" style="margin-top: 30px; color: var(--danger);">Personnes Blacklistées</h3>
+                <div class="users-full-grid" id="blacklistGrid">
+                    <p class="empty-state">Aucune personne blacklistée</p>
                 </div>
             </div>
 
@@ -134,12 +144,12 @@
                     <section class="settings-section card">
                         <h3>Sécurité</h3>
                         <div class="setting-item">
-                            <label>Seuil de détection inconnu</label>
+                            <label>Délai avant verrouillage</label>
                             <div class="setting-control">
-                                <input type="range" id="unknownThreshold" min="1" max="10" value="3">
-                                <span id="unknownThresholdValue">3</span> détections
+                                <input type="range" id="unknownThresholdSeconds" min="1" max="5" step="1" value="3">
+                                <span id="unknownThresholdValue">3</span> seconde(s)
                             </div>
-                            <p class="setting-desc">Nombre de détections consécutives d'un visage inconnu avant verrouillage</p>
+                            <p class="setting-desc">Temps de détection d'un visage inconnu avant verrouillage automatique</p>
                         </div>
                         <div class="setting-item">
                             <label>Verrouiller l'écran</label>
@@ -162,14 +172,22 @@
                             <label>Notification sonore</label>
                             <div class="setting-control">
                                 <input type="checkbox" id="soundAlert" checked>
-                                <span>Jouer un son en cas d'intrusion</span>
+                                <span>Activer les alertes vocales</span>
                             </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Message d'alerte par défaut</label>
+                            <div class="setting-control">
+                                <input type="text" id="alertMessage" placeholder="Accès non autorisé détecté" style="min-width: 300px;">
+                            </div>
+                            <p class="setting-desc">Message prononcé pour les inconnus (les blacklistés ont leur propre message)</p>
                         </div>
                         <div class="setting-item">
                             <label>Email d'alerte</label>
                             <div class="setting-control">
                                 <input type="email" id="alertEmail" placeholder="votre@email.com">
                             </div>
+                            <p class="setting-desc">Recevez une notification par email avec la photo de l'intrus</p>
                         </div>
                     </section>
                     <section class="settings-section card">
@@ -202,9 +220,8 @@
                     <div class="history-filters">
                         <select id="historyFilter">
                             <option value="all">Tous les événements</option>
+                            <option value="intrusion">Intrusions</option>
                             <option value="detection">Détections</option>
-                            <option value="alert">Alertes</option>
-                            <option value="lock">Verrouillages</option>
                         </select>
                     </div>
                     <div class="history-list" id="historyList">

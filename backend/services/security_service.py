@@ -1,5 +1,6 @@
 """Service de sécurité (verrouillage Windows, captures)"""
 import cv2
+import json
 import platform
 from datetime import datetime
 from pathlib import Path
@@ -8,6 +9,7 @@ import numpy as np
 
 from backend.config import DATA_DIR
 from backend.models.settings import SettingsModel
+from backend.models.database import get_db
 
 
 class SecurityService:
@@ -19,7 +21,13 @@ class SecurityService:
 
     def lock_workstation(self) -> bool:
         """Verrouille la session Windows"""
-        if not SettingsModel.get_bool("auto_lock"):
+        # Vérifier le paramètre (supporter les deux noms)
+        lock_enabled = SettingsModel.get_bool("lockScreenEnabled")
+        if lock_enabled is None:
+            lock_enabled = SettingsModel.get_bool("auto_lock")
+
+        if not lock_enabled:
+            print("Verrouillage désactivé dans les paramètres")
             return False
 
         if platform.system() != "Windows":
@@ -43,7 +51,7 @@ class SecurityService:
             prefix: Préfixe du nom de fichier
 
         Returns:
-            Chemin vers l'image sauvegardée
+            Nom du fichier sauvegardé (pas le chemin complet)
         """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{prefix}_{timestamp}.jpg"
@@ -51,7 +59,8 @@ class SecurityService:
 
         try:
             cv2.imwrite(str(filepath), frame)
-            return str(filepath)
+            # Retourner seulement le nom du fichier, pas le chemin complet
+            return filename
         except Exception as e:
             print(f"Erreur capture: {e}")
             return None
@@ -77,6 +86,24 @@ class SecurityService:
         except Exception as e:
             print(f"Erreur screenshot: {e}")
             return None
+
+    def log_event(self, event_type: str, user_id: int = None,
+                  details: dict = None, image_path: str = None):
+        """Enregistre un événement dans les logs"""
+        db = get_db()
+
+        with db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO logs (event_type, user_id, details, image_path)
+                VALUES (?, ?, ?, ?)
+            """, (
+                event_type,
+                user_id,
+                json.dumps(details) if details else None,
+                image_path
+            ))
+            conn.commit()
 
     def trigger_security_response(self, frame: np.ndarray = None,
                                   detected_name: str = "Inconnu") -> dict:
@@ -106,6 +133,8 @@ class SecurityService:
 
         # Verrouiller la session
         results["locked"] = self.lock_workstation()
+
+        # Note: Le log est géré par alert_service.trigger_alert() pour éviter les doublons
 
         return results
 
