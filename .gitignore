@@ -177,3 +177,10 @@ data/altalock.db
 PLAN.md
 frontend/backend/
 frontend/out/
+*.exe
+electron/backend/*.exe
+build/
+dist/
+altalock-backend.spec
+node_modules/
+out/
