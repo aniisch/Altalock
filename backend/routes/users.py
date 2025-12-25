@@ -1,8 +1,14 @@
 """Routes API pour la gestion des utilisateurs"""
 import os
+import sys
 import shutil
+import functools
+import traceback
 from flask import Blueprint, request, jsonify
 from werkzeug.utils import secure_filename
+
+# Forcer les logs dans stderr
+print = functools.partial(print, file=sys.stderr, flush=True)
 
 from backend.models import UserModel
 from backend.config import FACES_DIR
@@ -59,13 +65,24 @@ def create_user():
     user_id = UserModel.create(
         name=data["name"],
         email=data.get("email"),
-        is_owner=data.get("is_owner", False)
+        is_owner=data.get("is_owner", False),
+        is_blacklisted=data.get("is_blacklisted", False),
+        custom_message=data.get("custom_message")
     )
 
     return jsonify({
         "id": user_id,
         "message": "Utilisateur créé"
     }), 201
+
+
+@users_bp.route("/blacklisted", methods=["GET"])
+def get_blacklisted():
+    """Liste les personnes blacklistées"""
+    users = UserModel.get_blacklisted()
+    for user in users:
+        user["face_count"] = UserModel.count_face_encodings(user["id"])
+    return jsonify({"users": users})
 
 
 @users_bp.route("/<int:user_id>", methods=["PUT"])
@@ -87,23 +104,41 @@ def update_user(user_id):
 @users_bp.route("/<int:user_id>", methods=["DELETE"])
 def delete_user(user_id):
     """Supprime un utilisateur"""
-    user = UserModel.get_by_id(user_id)
+    try:
+        user = UserModel.get_by_id(user_id)
 
-    if not user:
-        return jsonify({"error": "Utilisateur non trouvé"}), 404
+        if not user:
+            return jsonify({"error": "Utilisateur non trouvé"}), 404
 
-    # Supprimer les images associées
-    user_faces_dir = FACES_DIR / str(user_id)
-    if user_faces_dir.exists():
-        shutil.rmtree(user_faces_dir)
+        # Supprimer les images associées
+        user_faces_dir = FACES_DIR / str(user_id)
+        if user_faces_dir.exists():
+            try:
+                shutil.rmtree(user_faces_dir)
+            except Exception as e:
+                print(f"[DELETE USER] Erreur suppression dossier: {e}")
 
-    success = UserModel.delete(user_id)
+        # Mettre à NULL les références dans les logs avant suppression
+        from backend.models.database import get_db
+        db = get_db()
+        with db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE logs SET user_id = NULL WHERE user_id = ?", (user_id,))
+            conn.commit()
+            print(f"[DELETE USER] {cursor.rowcount} log(s) mis à jour")
 
-    if success:
-        # Recharger les encodages
-        get_face_service().load_encodings()
+        success = UserModel.delete(user_id)
 
-    return jsonify({"message": "Utilisateur supprimé"})
+        if success:
+            # Recharger les encodages
+            get_face_service().load_encodings()
+
+        return jsonify({"message": "Utilisateur supprimé"})
+
+    except Exception as e:
+        print(f"[DELETE USER] EXCEPTION: {e}")
+        print(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
 
 
 @users_bp.route("/<int:user_id>/faces", methods=["POST"])

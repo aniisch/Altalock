@@ -25,11 +25,23 @@ class Database:
                     name TEXT NOT NULL,
                     email TEXT,
                     is_owner BOOLEAN DEFAULT FALSE,
+                    is_blacklisted BOOLEAN DEFAULT FALSE,
+                    custom_message TEXT,
                     is_active BOOLEAN DEFAULT TRUE,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+
+            # Migration: ajouter les colonnes si elles n'existent pas
+            try:
+                cursor.execute("ALTER TABLE users ADD COLUMN is_blacklisted BOOLEAN DEFAULT FALSE")
+            except sqlite3.OperationalError:
+                pass
+            try:
+                cursor.execute("ALTER TABLE users ADD COLUMN custom_message TEXT")
+            except sqlite3.OperationalError:
+                pass
 
             # Table des encodages faciaux
             cursor.execute("""

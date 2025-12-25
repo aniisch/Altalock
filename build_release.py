@@ -4,7 +4,7 @@ Usage: python build_release.py
 
 Ce script:
 1. Build le backend Python avec PyInstaller
-2. Package l'application Electron avec Electron Forge
+2. Package l'application Electron avec electron-builder (NSIS)
 """
 import os
 import subprocess
@@ -39,38 +39,57 @@ def build():
     print("ÉTAPE 1: Build du backend Python avec PyInstaller")
     print("=" * 60)
 
-    # Importer et exécuter le build du backend
     build_backend = root / "build_backend.py"
     if not run_command(f"python {build_backend}", cwd=root):
         print("ERREUR: Build backend échoué!")
         return False
 
-    # Étape 2: Installer les dépendances npm si nécessaire
+    # Copier le backend dans frontend pour electron-builder
+    backend_src = root / "dist" / "altalock-backend.exe"
+    backend_dest = frontend / "backend"
+
+    if backend_dest.exists():
+        shutil.rmtree(backend_dest)
+    backend_dest.mkdir(exist_ok=True)
+
+    if backend_src.exists():
+        print(f"\nCopie du backend vers {backend_dest}")
+        shutil.copy2(backend_src, backend_dest / "altalock-backend.exe")
+
+        # Copier aussi le dossier data s'il existe
+        data_src = root / "data"
+        if data_src.exists():
+            data_dest = backend_dest / "data"
+            if data_dest.exists():
+                shutil.rmtree(data_dest)
+            shutil.copytree(data_src, data_dest)
+    else:
+        print(f"ERREUR: Backend non trouvé: {backend_src}")
+        return False
+
+    # Étape 2: Installer les dépendances npm
     print("\n" + "=" * 60)
     print("ÉTAPE 2: Installation des dépendances npm")
     print("=" * 60)
 
-    if not (frontend / "node_modules").exists():
-        if not run_command("npm install", cwd=frontend):
-            print("ERREUR: npm install échoué!")
-            return False
-    else:
-        print("   node_modules existe déjà")
+    if not run_command("npm install", cwd=frontend):
+        print("ERREUR: npm install échoué!")
+        return False
 
-    # Étape 3: Package Electron
+    # Étape 3: Build avec electron-builder
     print("\n" + "=" * 60)
-    print("ÉTAPE 3: Package Electron avec Electron Forge")
+    print("ÉTAPE 3: Build avec electron-builder (NSIS)")
     print("=" * 60)
 
     if sys.platform == "win32":
-        make_cmd = "npm run make:win"
+        build_cmd = "npm run build"
     elif sys.platform == "darwin":
-        make_cmd = "npm run make:mac"
+        build_cmd = "npm run build:mac"
     else:
-        make_cmd = "npm run make:linux"
+        build_cmd = "npm run build:linux"
 
-    if not run_command(make_cmd, cwd=frontend):
-        print("ERREUR: Electron Forge make a échoué!")
+    if not run_command(build_cmd, cwd=frontend):
+        print("ERREUR: electron-builder a échoué!")
         return False
 
     # Résumé
@@ -78,12 +97,12 @@ def build():
     print("BUILD TERMINÉ AVEC SUCCÈS!")
     print("=" * 60)
 
-    out_dir = frontend / "out" / "make"
-    print(f"\nFichiers de distribution dans: {out_dir}")
+    dist_dir = frontend / "dist"
+    print(f"\nFichiers de distribution dans: {dist_dir}")
 
-    if out_dir.exists():
-        for item in out_dir.rglob("*"):
-            if item.is_file() and item.suffix in [".exe", ".msi", ".zip", ".deb", ".rpm"]:
+    if dist_dir.exists():
+        for item in dist_dir.rglob("*"):
+            if item.is_file() and item.suffix in [".exe", ".msi", ".zip", ".deb", ".rpm", ".AppImage"]:
                 size_mb = item.stat().st_size / (1024 * 1024)
                 print(f"  - {item.name} ({size_mb:.1f} MB)")
 

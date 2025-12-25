@@ -18,6 +18,8 @@ class DetectionResult:
     user_id: Optional[int]
     name: str
     is_owner: bool
+    is_blacklisted: bool
+    custom_message: Optional[str]
     confidence: float
     box: Tuple[int, int, int, int]  # (top, right, bottom, left)
 
@@ -53,6 +55,8 @@ class FaceRecognitionService:
                     "user_id": data["user_id"],
                     "name": data["user_name"],
                     "is_owner": bool(data["is_owner"]),
+                    "is_blacklisted": bool(data.get("is_blacklisted", False)),
+                    "custom_message": data.get("custom_message"),
                     "encoding_id": data["id"]
                 })
 
@@ -132,13 +136,23 @@ class FaceRecognitionService:
                 user_id=result["user_id"],
                 name=result["name"],
                 is_owner=result["is_owner"],
+                is_blacklisted=result.get("is_blacklisted", False),
+                custom_message=result.get("custom_message"),
                 confidence=result["confidence"],
                 box=(top, right, bottom, left)
             )
             detections.append(detection)
 
             # Dessiner le rectangle sur le frame
-            color = (0, 255, 0) if result["is_owner"] else (0, 165, 255) if result["user_id"] else (0, 0, 255)
+            # Rouge pour blacklisté, vert pour owner, orange pour connu, rouge pour inconnu
+            if result.get("is_blacklisted"):
+                color = (0, 0, 255)  # Rouge pour blacklisté
+            elif result["is_owner"]:
+                color = (0, 255, 0)  # Vert pour owner
+            elif result["user_id"]:
+                color = (0, 165, 255)  # Orange pour connu
+            else:
+                color = (0, 0, 255)  # Rouge pour inconnu
             cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
 
             # Label avec le nom
@@ -156,6 +170,8 @@ class FaceRecognitionService:
                 "user_id": None,
                 "name": "Inconnu",
                 "is_owner": False,
+                "is_blacklisted": False,
+                "custom_message": None,
                 "confidence": 0.0
             }
 
@@ -167,6 +183,8 @@ class FaceRecognitionService:
                 "user_id": None,
                 "name": "Inconnu",
                 "is_owner": False,
+                "is_blacklisted": False,
+                "custom_message": None,
                 "confidence": 0.0
             }
 
@@ -183,6 +201,8 @@ class FaceRecognitionService:
                 "user_id": metadata["user_id"],
                 "name": metadata["name"],
                 "is_owner": metadata["is_owner"],
+                "is_blacklisted": metadata.get("is_blacklisted", False),
+                "custom_message": metadata.get("custom_message"),
                 "confidence": confidence
             }
 
@@ -190,6 +210,8 @@ class FaceRecognitionService:
             "user_id": None,
             "name": "Inconnu",
             "is_owner": False,
+            "is_blacklisted": False,
+            "custom_message": None,
             "confidence": 1.0 - best_distance
         }
 
@@ -270,12 +292,12 @@ class FaceRecognitionService:
                     frame_b64 = self.frame_to_base64(annotated_frame)
                     self._frame_callback(frame_b64, detections)
 
-                # Appeler le callback de détection pour chaque visage
+                # Mettre à jour les compteurs de sécurité AVANT le callback
+                self._update_security_counters(detections)
+
+                # Appeler le callback de détection (qui vérifie should_trigger_alert)
                 if self._detection_callback and detections:
                     self._detection_callback(detections)
-
-                # Mettre à jour les compteurs de sécurité
-                self._update_security_counters(detections)
 
             # Petit délai pour ne pas surcharger le CPU
             time.sleep(0.033)  # ~30 FPS max
@@ -297,7 +319,10 @@ class FaceRecognitionService:
 
     def should_trigger_alert(self) -> bool:
         """Vérifie si une alerte doit être déclenchée"""
-        threshold = SettingsModel.get_int("detection_threshold") or 4
+        # Essayer unknownThreshold (frontend) puis detection_threshold (backend)
+        threshold = SettingsModel.get_int("unknownThreshold")
+        if threshold == 0:
+            threshold = SettingsModel.get_int("detection_threshold") or 4
         return self.consecutive_unknown >= threshold
 
     def reset_counters(self):

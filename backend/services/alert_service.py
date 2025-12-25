@@ -1,12 +1,18 @@
 """Service d'alertes (email et vocales)"""
 import smtplib
 import json
+import sys
+import functools
+import threading
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+# Forcer l'affichage des logs dans stderr
+print = functools.partial(print, file=sys.stderr, flush=True)
 
 from backend.models.settings import SettingsModel
 from backend.models.database import get_db
@@ -29,35 +35,49 @@ class AlertService:
         return self._tts_engine
 
     def speak(self, message: str) -> bool:
-        """Prononce un message via text-to-speech"""
-        engine = self._get_tts_engine()
-        if engine:
+        """Prononce un message via text-to-speech (non-bloquant)"""
+        def _speak_thread():
             try:
+                import pyttsx3
+                engine = pyttsx3.init()
                 engine.say(message)
                 engine.runAndWait()
-                return True
+                engine.stop()
+                print(f"[TTS] Message prononcé: {message}")
             except Exception as e:
-                print(f"Erreur TTS: {e}")
-        return False
+                print(f"[TTS] Erreur: {e}")
+
+        # Lancer dans un thread séparé pour ne pas bloquer
+        thread = threading.Thread(target=_speak_thread, daemon=True)
+        thread.start()
+        return True
 
     def send_email(self, subject: str, body: str, attachment_path: str = None) -> bool:
         """Envoie un email d'alerte"""
-        recipient = SettingsModel.get("alert_email")
+        # Récupérer l'email destinataire depuis les paramètres
+        recipient = SettingsModel.get("alert_email") or SettingsModel.get("alertEmail")
+
+        print(f"[EMAIL] Tentative d'envoi à: {recipient}")
 
         if not recipient:
-            print("Pas d'email configuré pour les alertes")
+            print("[EMAIL] ERREUR: Pas d'email configuré pour les alertes")
             return False
 
         # Récupérer la config SMTP depuis les variables d'environnement
         import os
-        smtp_server = os.environ.get("SMTP_SERVER", "")
+        smtp_server = os.environ.get("SMTP_SERVER", "smtp.hostinger.com")
         smtp_port = int(os.environ.get("SMTP_PORT", "587"))
         smtp_user = os.environ.get("SMTP_USER", "")
         smtp_password = os.environ.get("SMTP_PASSWORD", "")
 
+        print(f"[EMAIL] Config SMTP: server={smtp_server}, port={smtp_port}, user={smtp_user}")
+        print(f"[EMAIL] Password configuré: {'Oui' if smtp_password else 'NON'} (longueur: {len(smtp_password)})")
+
         if not all([smtp_server, smtp_user, smtp_password]):
-            print("Configuration SMTP incomplète")
+            print("[EMAIL] ERREUR: Configuration SMTP incomplète - vérifiez le fichier .env")
             return False
+
+        print(f"[EMAIL] Envoi en cours...")
 
         try:
             msg = MIMEMultipart()
@@ -68,27 +88,64 @@ class AlertService:
             msg.attach(MIMEText(body, "html"))
 
             # Ajouter la pièce jointe si fournie
-            if attachment_path and Path(attachment_path).exists():
-                with open(attachment_path, "rb") as f:
-                    img = MIMEImage(f.read())
-                    img.add_header("Content-Disposition", "attachment",
-                                  filename=Path(attachment_path).name)
-                    msg.attach(img)
+            if attachment_path:
+                from backend.config import DATA_DIR
+                # Construire le chemin complet si c'est juste un nom de fichier
+                if not Path(attachment_path).is_absolute():
+                    full_path = DATA_DIR / "captures" / attachment_path
+                else:
+                    full_path = Path(attachment_path)
 
-            # Envoyer l'email
-            with smtplib.SMTP(smtp_server, smtp_port) as server:
-                server.starttls()
-                server.login(smtp_user, smtp_password)
-                server.send_message(msg)
+                if full_path.exists():
+                    print(f"[EMAIL] Ajout de la pièce jointe: {full_path.name}")
+                    with open(full_path, "rb") as f:
+                        img = MIMEImage(f.read())
+                        img.add_header("Content-Disposition", "attachment",
+                                      filename=full_path.name)
+                        msg.attach(img)
+                else:
+                    print(f"[EMAIL] Pièce jointe non trouvée: {full_path}")
 
+            # Envoyer l'email (SSL sur port 465, TLS sur port 587)
+            print(f"[EMAIL] Connexion à {smtp_server}:{smtp_port}...")
+
+            if smtp_port == 465:
+                # Connexion SSL directe
+                import ssl
+                context = ssl.create_default_context()
+                print("[EMAIL] Mode SSL (port 465)")
+                with smtplib.SMTP_SSL(smtp_server, smtp_port, context=context, timeout=10) as server:
+                    print("[EMAIL] Connexion SSL établie, login...")
+                    server.login(smtp_user, smtp_password)
+                    print("[EMAIL] Login OK, envoi du message...")
+                    server.send_message(msg)
+            else:
+                # Connexion TLS (STARTTLS)
+                print(f"[EMAIL] Mode TLS/STARTTLS (port {smtp_port})")
+                with smtplib.SMTP(smtp_server, smtp_port, timeout=10) as server:
+                    print("[EMAIL] Connexion établie, STARTTLS...")
+                    server.starttls()
+                    print("[EMAIL] TLS OK, login...")
+                    server.login(smtp_user, smtp_password)
+                    print("[EMAIL] Login OK, envoi du message...")
+                    server.send_message(msg)
+
+            print(f"[EMAIL] SUCCESS: Email envoyé à {recipient}")
             return True
 
+        except smtplib.SMTPAuthenticationError as e:
+            print(f"[EMAIL] ERREUR AUTH: Mot de passe incorrect ou compte bloqué - {e}")
+            return False
+        except smtplib.SMTPConnectError as e:
+            print(f"[EMAIL] ERREUR CONNEXION: Impossible de se connecter au serveur - {e}")
+            return False
         except Exception as e:
-            print(f"Erreur envoi email: {e}")
+            print(f"[EMAIL] ERREUR: {type(e).__name__}: {e}")
             return False
 
     def trigger_alert(self, alert_type: str, detected_name: str = "Inconnu",
-                     image_path: str = None, user_id: int = None) -> bool:
+                     image_path: str = None, user_id: int = None,
+                     custom_message: str = None, is_blacklisted: bool = False) -> bool:
         """
         Déclenche une alerte complète (TTS + email + log)
 
@@ -97,13 +154,27 @@ class AlertService:
             detected_name: Nom de la personne détectée
             image_path: Chemin vers la capture d'écran
             user_id: ID de l'utilisateur si identifié
+            custom_message: Message personnalisé pour cette personne
+            is_blacklisted: Si la personne est blacklistée
         """
         timestamp = datetime.now()
-        alert_message = SettingsModel.get("alert_message") or "Accès non autorisé détecté"
 
-        # 1. Alerte vocale
-        tts_message = f"{alert_message}. {detected_name} détecté."
-        self.speak(tts_message)
+        # Vérifier si les alertes sonores sont activées (True par défaut)
+        sound_setting = SettingsModel.get("soundAlert")
+        sound_enabled = sound_setting is None or str(sound_setting).lower() == "true"
+
+        # 1. Alerte vocale avec message personnalisé
+        if sound_enabled:
+            if custom_message:
+                # Message personnalisé (ex: "Touche pas à ma machine, Jean!")
+                tts_message = custom_message.replace("{nom}", detected_name)
+            elif is_blacklisted:
+                tts_message = f"Attention! {detected_name} détecté. Accès interdit!"
+            else:
+                default_message = SettingsModel.get("alert_message") or "Accès non autorisé détecté"
+                tts_message = f"{default_message}. {detected_name} détecté."
+
+            self.speak(tts_message)
 
         # 2. Alerte email
         email_subject = f"[AltaLock] Alerte de sécurité - {alert_type}"
@@ -121,13 +192,14 @@ class AlertService:
         """
         email_sent = self.send_email(email_subject, email_body, image_path)
 
-        # 3. Logger l'événement
+        # 3. Logger l'événement (type "intrusion" pour regrouper alerte + verrouillage)
         self.log_event(
-            event_type="alert",
+            event_type="intrusion",
             user_id=user_id,
             details={
                 "alert_type": alert_type,
                 "detected_name": detected_name,
+                "is_blacklisted": is_blacklisted,
                 "email_sent": email_sent,
                 "timestamp": timestamp.isoformat()
             },
