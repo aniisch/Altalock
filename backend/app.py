@@ -65,8 +65,8 @@ from backend.models.database import get_db
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# Activer CORS pour le développement
-CORS(app, origins=["http://localhost:*", "file://*"])
+# Activer CORS pour tous les origines (nécessaire pour Electron)
+CORS(app, origins="*", supports_credentials=True)
 
 # Configurer Socket.IO
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
@@ -77,20 +77,40 @@ app.register_blueprint(settings_bp)
 app.register_blueprint(logs_bp)
 
 
+# Désactiver le mode debug en production (évite les pages HTML d'erreur)
+app.config['PROPAGATE_EXCEPTIONS'] = True
+
 # --- Gestionnaire d'erreurs global (forcer JSON) ---
 @app.errorhandler(Exception)
 def handle_exception(e):
     """Attrape toutes les exceptions et retourne du JSON"""
     import traceback
-    print(f"[GLOBAL ERROR] {type(e).__name__}: {e}")
+    error_msg = str(e)
+    error_type = type(e).__name__
+    print(f"[GLOBAL ERROR] {error_type}: {error_msg}")
     print(traceback.format_exc())
-    return jsonify({"error": str(e), "type": type(e).__name__}), 500
+    response = jsonify({
+        "error": error_msg,
+        "type": error_type
+    })
+    response.status_code = 500
+    return response
 
 @app.errorhandler(500)
 def handle_500(e):
     """Erreur 500"""
     print(f"[ERROR 500] {e}")
-    return jsonify({"error": "Erreur interne du serveur"}), 500
+    response = jsonify({"error": "Erreur interne du serveur"})
+    response.status_code = 500
+    return response
+
+@app.errorhandler(404)
+def handle_404(e):
+    """Erreur 404"""
+    print(f"[ERROR 404] {e}")
+    response = jsonify({"error": "Endpoint non trouvé"})
+    response.status_code = 404
+    return response
 
 
 # --- Routes système ---
