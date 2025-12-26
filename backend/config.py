@@ -1,21 +1,41 @@
 """Configuration de l'application AltaLock"""
 import os
+import sys
 from pathlib import Path
 
-# Chemins de base
-BASE_DIR = Path(__file__).parent.parent
-DATA_DIR = BASE_DIR / "data"
+# Déterminer si on est en mode production (exe PyInstaller)
+IS_FROZEN = getattr(sys, 'frozen', False)
+
+if IS_FROZEN:
+    # Production: les données sont à côté de l'exe
+    # sys.executable pointe vers altalock-backend.exe
+    EXE_DIR = Path(sys.executable).parent
+    BASE_DIR = EXE_DIR
+    DATA_DIR = EXE_DIR / "data"
+else:
+    # Développement: structure normale du projet
+    BASE_DIR = Path(__file__).parent.parent
+    DATA_DIR = BASE_DIR / "data"
+
 FACES_DIR = DATA_DIR / "faces"
+CAPTURES_DIR = DATA_DIR / "captures"
 DATABASE_PATH = DATA_DIR / "altalock.db"
 
 # Créer les dossiers si nécessaire
 DATA_DIR.mkdir(exist_ok=True)
 FACES_DIR.mkdir(exist_ok=True)
+CAPTURES_DIR.mkdir(exist_ok=True)
+
+# Log des chemins pour debug
+print(f"[CONFIG] IS_FROZEN: {IS_FROZEN}")
+print(f"[CONFIG] BASE_DIR: {BASE_DIR}")
+print(f"[CONFIG] DATA_DIR: {DATA_DIR}")
+print(f"[CONFIG] DATABASE_PATH: {DATABASE_PATH}")
 
 # Configuration Flask
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "altalock-dev-key-change-in-production")
-    DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
+    DEBUG = not IS_FROZEN and os.environ.get("DEBUG", "True").lower() == "true"
 
     # Base de données
     DATABASE_PATH = str(DATABASE_PATH)

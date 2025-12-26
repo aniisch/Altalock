@@ -8,13 +8,15 @@ const { spawn } = require('child_process');
 const http = require('http');
 const fs = require('fs');
 
-// Squirrel startup (Windows installer)
-if (process.platform === 'win32') {
-    const cmd = process.argv[1];
-    if (cmd === '--squirrel-install' || cmd === '--squirrel-updated' ||
-        cmd === '--squirrel-uninstall' || cmd === '--squirrel-obsolete') {
-        app.quit();
-    }
+// Gérer les événements Squirrel (Windows installer) - DOIT être au début
+if (require('electron-squirrel-startup')) {
+    app.quit();
+}
+
+// Empêcher plusieurs instances - DOIT être au début
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+    app.quit();
 }
 
 // Variables globales
@@ -26,6 +28,7 @@ let backendProcess = null;
 // Mode dev ou production
 const isDev = !app.isPackaged;
 const BACKEND_PORT = 5000;
+const BACKEND_TIMEOUT = 30000; // 30 secondes max pour attendre le backend
 
 // Chemins
 const rootPath = isDev
@@ -36,16 +39,24 @@ function log(message) {
     console.log(`[AltaLock] ${message}`);
 }
 
-// Vérifier si le backend est prêt
+// Vérifier si le backend est prêt (avec timeout)
 function checkBackendReady() {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+        const startTime = Date.now();
+
         const check = () => {
+            // Timeout après BACKEND_TIMEOUT ms
+            if (Date.now() - startTime > BACKEND_TIMEOUT) {
+                reject(new Error('Backend timeout - le backend n\'a pas démarré dans les temps'));
+                return;
+            }
+
             const req = http.request({
                 hostname: '127.0.0.1',
                 port: BACKEND_PORT,
                 path: '/api/status',
                 method: 'GET',
-                timeout: 1000
+                timeout: 2000
             }, (res) => {
                 if (res.statusCode === 200) {
                     resolve(true);
@@ -114,7 +125,7 @@ function startBackend() {
             args = [path.join(__dirname, '..', 'backend', 'app.py')];
             log(`Dev mode: ${backendPath} ${args.join(' ')}`);
         } else {
-            // Production : lance l'exe PyInstaller depuis electron/backend
+            // Production : lance l'exe PyInstaller depuis resources/backend
             const possiblePaths = [
                 path.join(process.resourcesPath, 'backend', 'altalock-backend.exe'),
                 path.join(path.dirname(process.execPath), 'resources', 'backend', 'altalock-backend.exe'),
@@ -124,17 +135,29 @@ function startBackend() {
             backendPath = possiblePaths.find(p => {
                 try {
                     fs.accessSync(p);
+                    log(`Backend trouve: ${p}`);
                     return true;
                 } catch {
                     return false;
                 }
-            }) || possiblePaths[0];
+            });
+
+            if (!backendPath) {
+                log('ERREUR: Backend non trouve!');
+                log('Chemins testes:');
+                possiblePaths.forEach(p => log(`  - ${p}`));
+                reject(new Error('Backend executable non trouvé'));
+                return;
+            }
 
             log(`Prod mode: ${backendPath}`);
         }
 
+        const cwd = isDev ? path.join(__dirname, '..') : path.dirname(backendPath);
+        log(`Working directory: ${cwd}`);
+
         backendProcess = spawn(backendPath, args, {
-            cwd: isDev ? rootPath : path.dirname(backendPath),
+            cwd: cwd,
             stdio: ['pipe', 'pipe', 'pipe'],
             shell: process.platform === 'win32'
         });
@@ -195,6 +218,7 @@ function createMainWindow() {
 
         // Le frontend est dans public/ (bundled dans l'app)
         const indexPath = path.join(__dirname, '..', 'public', 'index.html');
+        log(`Chargement de: ${indexPath}`);
         mainWindow.loadFile(indexPath);
 
         mainWindow.webContents.once('did-finish-load', () => {
@@ -256,7 +280,7 @@ app.whenReady().then(async () => {
         await createSplashWindow();
         log('Splash affiche');
 
-        startBackend();
+        await startBackend();
         log('Backend lance');
 
         log('Attente du backend...');
@@ -293,16 +317,11 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => { stopBackend(); tray = null; });
 app.on('quit', () => stopBackend());
 
-// Empêcher plusieurs instances
-const gotTheLock = app.requestSingleInstanceLock();
-if (!gotTheLock) {
-    app.quit();
-} else {
-    app.on('second-instance', () => {
-        if (mainWindow) {
-            if (mainWindow.isMinimized()) mainWindow.restore();
-            mainWindow.show();
-            mainWindow.focus();
-        }
-    });
-}
+// Gérer la seconde instance
+app.on('second-instance', () => {
+    if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.show();
+        mainWindow.focus();
+    }
+});
