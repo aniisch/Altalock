@@ -97,43 +97,21 @@ if __name__ == "__main__":
         print("ERREUR: PyInstaller a échoué!")
         return False
 
-    # Copier le backend dans le dossier electron
-    print("3. Copie du backend dans frontend/backend/...")
-    electron_backend = root / "frontend" / "backend"
-    electron_backend.mkdir(parents=True, exist_ok=True)
-
-    if sys.platform == "win32":
-        backend_exe = root / "dist" / "altalock-backend.exe"
-        target = electron_backend / "altalock-backend.exe"
-    else:
-        backend_exe = root / "dist" / "altalock-backend"
-        target = electron_backend / "altalock-backend"
-
-    if backend_exe.exists():
-        shutil.copy(backend_exe, target)
-        print(f"   Copié: {target}")
-    else:
-        print(f"ERREUR: Backend non trouvé: {backend_exe}")
-        return False
-
-    # Créer le dossier data
-    print("4. Création du dossier data...")
-    data_dir = electron_backend / "data"
-    data_dir.mkdir(exist_ok=True)
-    (data_dir / "faces").mkdir(exist_ok=True)
-
-    # Nettoyer
-    print("5. Nettoyage...")
+    # Nettoyer le fichier temporaire
+    print("3. Nettoyage du fichier temporaire...")
     if entry_file.exists():
         entry_file.unlink()
+        print(f"   Supprimé: {entry_file}")
 
     print("")
     print("=" * 50)
-    print("BUILD TERMINÉ!")
+    print("BUILD BACKEND TERMINÉ!")
     print("=" * 50)
-    print(f"Backend: {target}")
-    print("")
-    print("Prochaine étape: cd frontend && npm run make:win")
+
+    if sys.platform == "win32":
+        print(f"Backend: dist/altalock-backend.exe")
+    else:
+        print(f"Backend: dist/altalock-backend")
 
     return True
 

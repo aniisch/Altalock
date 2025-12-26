@@ -47,6 +47,8 @@ module.exports = {
         description: 'Application de securite avec reconnaissance faciale',
         iconUrl: 'file://' + path.join(__dirname, 'assets', 'icons', 'icon.ico'),
         setupIcon: path.join(__dirname, 'assets', 'icons', 'icon.ico'),
+        // Splash personnalisé pendant l'installation (remplace le vert par défaut)
+        loadingGif: path.join(__dirname, 'assets', 'loading.gif'),
         noMsi: true
       }
     },
