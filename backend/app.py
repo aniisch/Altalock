@@ -10,9 +10,44 @@ print = functools.partial(print, file=sys.stderr, flush=True)
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Charger les variables d'environnement depuis .env
+# Chercher dans plusieurs emplacements (production et dev)
 from dotenv import load_dotenv
-env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
-load_dotenv(env_path)
+
+def find_and_load_env():
+    """Cherche et charge le fichier .env dans l'ordre de priorité"""
+    possible_paths = []
+
+    # 1. À côté de l'exe (production PyInstaller)
+    if getattr(sys, 'frozen', False):
+        exe_dir = os.path.dirname(sys.executable)
+        possible_paths.append(os.path.join(exe_dir, '.env'))
+        possible_paths.append(os.path.join(exe_dir, '..', '.env'))
+
+    # 2. Dossier parent (développement)
+    possible_paths.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
+
+    # 3. Dossier courant
+    possible_paths.append(os.path.join(os.getcwd(), '.env'))
+
+    # 4. AppData (Windows) ou home (Linux)
+    if sys.platform == 'win32':
+        appdata = os.environ.get('APPDATA', '')
+        if appdata:
+            possible_paths.append(os.path.join(appdata, 'AltaLock', '.env'))
+    else:
+        home = os.path.expanduser('~')
+        possible_paths.append(os.path.join(home, '.altalock', '.env'))
+
+    for env_path in possible_paths:
+        if os.path.exists(env_path):
+            print(f"[ENV] Chargement depuis: {env_path}")
+            load_dotenv(env_path)
+            return env_path
+
+    print("[ENV] Aucun fichier .env trouvé, utilisation des variables d'environnement système")
+    return None
+
+find_and_load_env()
 
 from flask import Flask, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit

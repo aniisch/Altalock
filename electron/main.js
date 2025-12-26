@@ -111,14 +111,14 @@ function startBackend() {
         if (isDev) {
             // Dev : lance Python directement
             backendPath = process.platform === 'win32' ? 'python' : 'python3';
-            args = [path.join(rootPath, 'backend', 'app.py')];
+            args = [path.join(__dirname, '..', 'backend', 'app.py')];
             log(`Dev mode: ${backendPath} ${args.join(' ')}`);
         } else {
-            // Production : lance l'exe PyInstaller
+            // Production : lance l'exe PyInstaller depuis electron/backend
             const possiblePaths = [
-                path.join(rootPath, 'backend', 'altalock-backend.exe'),
                 path.join(process.resourcesPath, 'backend', 'altalock-backend.exe'),
-                path.join(path.dirname(process.execPath), 'backend', 'altalock-backend.exe')
+                path.join(path.dirname(process.execPath), 'resources', 'backend', 'altalock-backend.exe'),
+                path.join(rootPath, 'backend', 'altalock-backend.exe')
             ];
 
             backendPath = possiblePaths.find(p => {
@@ -193,7 +193,9 @@ function createMainWindow() {
             }
         });
 
-        mainWindow.loadFile(path.join(__dirname, 'index.html'));
+        // Le frontend est dans public/ (bundled dans l'app)
+        const indexPath = path.join(__dirname, '..', 'public', 'index.html');
+        mainWindow.loadFile(indexPath);
 
         mainWindow.webContents.once('did-finish-load', () => {
             log('Contenu charge');
@@ -217,6 +219,7 @@ function createMainWindow() {
 
 // Créer le tray
 function createTray() {
+    // Assets sont bundled dans l'asar, donc on utilise __dirname
     const iconPath = path.join(__dirname, '..', 'assets', 'icons', 'icon.png');
     let icon;
 

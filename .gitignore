@@ -178,7 +178,7 @@ PLAN.md
 frontend/backend/
 frontend/out/
 *.exe
-electron/backend/*.exe
+electron/backend
 build/
 dist/
 altalock-backend.spec

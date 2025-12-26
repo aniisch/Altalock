@@ -4,7 +4,7 @@ Usage: python build_release.py
 
 Ce script:
 1. Build le backend Python avec PyInstaller
-2. Package l'application Electron avec electron-builder (NSIS)
+2. Package l'application Electron avec Electron Forge
 """
 import os
 import subprocess
@@ -27,11 +27,14 @@ def build():
     print("=" * 60)
 
     root = Path(__file__).parent
-    frontend = root / "frontend"
 
     # Vérifier qu'on est dans le bon dossier
-    if not (frontend / "package.json").exists():
-        print("ERREUR: frontend/package.json non trouvé.")
+    if not (root / "package.json").exists():
+        print("ERREUR: package.json non trouvé à la racine.")
+        return False
+
+    if not (root / "electron" / "main.js").exists():
+        print("ERREUR: electron/main.js non trouvé.")
         return False
 
     # Étape 1: Build du backend Python
@@ -44,9 +47,9 @@ def build():
         print("ERREUR: Build backend échoué!")
         return False
 
-    # Copier le backend dans frontend pour electron-builder
+    # Copier le backend dans electron/backend pour electron-forge
     backend_src = root / "dist" / "altalock-backend.exe"
-    backend_dest = frontend / "backend"
+    backend_dest = root / "electron" / "backend"
 
     if backend_dest.exists():
         shutil.rmtree(backend_dest)
@@ -63,33 +66,34 @@ def build():
             if data_dest.exists():
                 shutil.rmtree(data_dest)
             shutil.copytree(data_src, data_dest)
+            print(f"   Copié: data/")
     else:
         print(f"ERREUR: Backend non trouvé: {backend_src}")
         return False
 
-    # Étape 2: Installer les dépendances npm
+    # Étape 2: Installer les dépendances npm (à la racine maintenant)
     print("\n" + "=" * 60)
     print("ÉTAPE 2: Installation des dépendances npm")
     print("=" * 60)
 
-    if not run_command("npm install", cwd=frontend):
+    if not run_command("npm install", cwd=root):
         print("ERREUR: npm install échoué!")
         return False
 
-    # Étape 3: Build avec electron-builder
+    # Étape 3: Package avec Electron Forge (à la racine)
     print("\n" + "=" * 60)
-    print("ÉTAPE 3: Build avec electron-builder (NSIS)")
+    print("ÉTAPE 3: Package avec Electron Forge")
     print("=" * 60)
 
     if sys.platform == "win32":
-        build_cmd = "npm run build"
+        make_cmd = "npm run make:win"
     elif sys.platform == "darwin":
-        build_cmd = "npm run build:mac"
+        make_cmd = "npm run make"
     else:
-        build_cmd = "npm run build:linux"
+        make_cmd = "npm run make:linux"
 
-    if not run_command(build_cmd, cwd=frontend):
-        print("ERREUR: electron-builder a échoué!")
+    if not run_command(make_cmd, cwd=root):
+        print("ERREUR: Electron Forge make a échoué!")
         return False
 
     # Résumé
@@ -97,12 +101,12 @@ def build():
     print("BUILD TERMINÉ AVEC SUCCÈS!")
     print("=" * 60)
 
-    dist_dir = frontend / "dist"
-    print(f"\nFichiers de distribution dans: {dist_dir}")
+    out_dir = root / "out" / "make"
+    print(f"\nFichiers de distribution dans: {out_dir}")
 
-    if dist_dir.exists():
-        for item in dist_dir.rglob("*"):
-            if item.is_file() and item.suffix in [".exe", ".msi", ".zip", ".deb", ".rpm", ".AppImage"]:
+    if out_dir.exists():
+        for item in out_dir.rglob("*"):
+            if item.is_file() and item.suffix in [".exe", ".zip", ".deb", ".rpm"]:
                 size_mb = item.stat().st_size / (1024 * 1024)
                 print(f"  - {item.name} ({size_mb:.1f} MB)")
 
