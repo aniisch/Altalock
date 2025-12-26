@@ -54,8 +54,14 @@ if __name__ == "__main__":
     # Déterminer le séparateur pour --add-data selon l'OS
     sep = ";" if sys.platform == "win32" else ":"
 
+    # Trouver le chemin des modèles face_recognition
+    print("2. Recherche des modèles face_recognition...")
+    import face_recognition_models
+    models_path = Path(face_recognition_models.__file__).parent / "models"
+    print(f"   Modèles trouvés: {models_path}")
+
     # Commande PyInstaller
-    print("2. Lancement de PyInstaller...")
+    print("3. Lancement de PyInstaller...")
 
     cmd = [
         "pyinstaller",
@@ -87,6 +93,8 @@ if __name__ == "__main__":
         "--hidden-import", "sqlite3",
         # Ajouter les fichiers source
         f"--add-data", f"backend{sep}backend",
+        # IMPORTANT: Ajouter les modèles face_recognition
+        f"--add-data", f"{models_path}{sep}face_recognition_models/models",
         # Fichier d'entrée
         str(entry_file)
     ]
@@ -98,7 +106,7 @@ if __name__ == "__main__":
         return False
 
     # Nettoyer le fichier temporaire
-    print("3. Nettoyage du fichier temporaire...")
+    print("4. Nettoyage du fichier temporaire...")
     if entry_file.exists():
         entry_file.unlink()
         print(f"   Supprimé: {entry_file}")
