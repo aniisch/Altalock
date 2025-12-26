@@ -1,15 +1,26 @@
 """Service de reconnaissance faciale"""
+import sys
+import functools
+# Forcer les logs dans stderr
+print = functools.partial(print, file=sys.stderr, flush=True)
+
+print("[FACE_SERVICE] Import cv2...")
 import cv2
+print("[FACE_SERVICE] Import numpy...")
 import numpy as np
+print("[FACE_SERVICE] Import face_recognition...")
 import face_recognition
+print("[FACE_SERVICE] Import base64, threading, time...")
 import base64
 import threading
 import time
 from typing import List, Dict, Optional, Callable, Tuple
 from dataclasses import dataclass
 
+print("[FACE_SERVICE] Import backend.models...")
 from backend.models import UserModel
 from backend.models.settings import SettingsModel
+print("[FACE_SERVICE] Imports OK!")
 
 
 @dataclass
@@ -271,51 +282,96 @@ class FaceRecognitionService:
 
     def _detection_loop(self):
         """Boucle principale de détection"""
+        # Charger les paramètres UNE SEULE FOIS au démarrage
         frame_skip = SettingsModel.get_int("frame_skip") or 2
         frame_count = 0
+        error_count = 0
+        max_errors = 10  # Arrêter après trop d'erreurs consécutives
+
+        print(f"[DETECTION] Boucle démarrée (frame_skip={frame_skip})")
 
         while self.is_running:
-            frame = self.get_frame()
+            try:
+                frame = self.get_frame()
 
-            if frame is None:
-                time.sleep(0.1)
-                continue
+                if frame is None:
+                    time.sleep(0.1)
+                    continue
 
-            frame_count += 1
+                frame_count += 1
 
-            # Traiter seulement 1 frame sur N
-            if frame_count % frame_skip == 0:
-                annotated_frame, detections = self.process_frame(frame)
+                # Traiter seulement 1 frame sur N
+                if frame_count % frame_skip == 0:
+                    annotated_frame, detections = self.process_frame(frame)
 
-                # Appeler le callback de frame
-                if self._frame_callback:
-                    frame_b64 = self.frame_to_base64(annotated_frame)
-                    self._frame_callback(frame_b64, detections)
+                    # Appeler le callback de frame (avec protection)
+                    if self._frame_callback:
+                        try:
+                            frame_b64 = self.frame_to_base64(annotated_frame)
+                            self._frame_callback(frame_b64, detections)
+                        except Exception as e:
+                            print(f"[DETECTION] Erreur frame_callback: {e}")
 
-                # Mettre à jour les compteurs de sécurité AVANT le callback
-                self._update_security_counters(detections)
+                    # Mettre à jour les compteurs de sécurité
+                    self._update_security_counters(detections)
 
-                # Appeler le callback de détection (qui vérifie should_trigger_alert)
-                if self._detection_callback and detections:
-                    self._detection_callback(detections)
+                    # Appeler le callback de détection (avec protection)
+                    if self._detection_callback and detections:
+                        try:
+                            self._detection_callback(detections)
+                        except Exception as e:
+                            print(f"[DETECTION] Erreur detection_callback: {e}")
 
-            # Petit délai pour ne pas surcharger le CPU
-            time.sleep(0.033)  # ~30 FPS max
+                    # Reset error count on success
+                    error_count = 0
+
+                # Petit délai pour ne pas surcharger le CPU
+                time.sleep(0.033)  # ~30 FPS max
+
+            except Exception as e:
+                error_count += 1
+                print(f"[DETECTION] Erreur dans la boucle ({error_count}/{max_errors}): {e}")
+                if error_count >= max_errors:
+                    print("[DETECTION] Trop d'erreurs, arrêt de la boucle")
+                    self.is_running = False
+                    break
+                time.sleep(0.5)  # Pause avant retry
 
     def _update_security_counters(self, detections: List[DetectionResult]):
-        """Met à jour les compteurs pour la logique de sécurité"""
-        owner_present = any(d.is_owner for d in detections)
-        unknown_present = any(d.user_id is None for d in detections)
+        """Met à jour les compteurs pour la logique de sécurité
 
-        if owner_present:
-            self.consecutive_unknown = 0
-            self.last_owner_seen = time.time()
-        elif unknown_present or (detections and not owner_present):
-            self.consecutive_unknown += 1
-
+        Logique:
+        - Owner présent → reset du compteur (tout va bien)
+        - Inconnu OU blacklisté (sans owner) → incrémente le compteur
+        - Utilisateur connu, autorisé, non-owner → ne rien faire (il est autorisé)
+        - Aucun visage → garder le compteur actuel
+        """
         # Si aucun visage détecté, on ne change rien
         if not detections:
-            pass  # Garder le compteur actuel
+            return
+
+        # Analyser les visages détectés
+        owner_present = any(d.is_owner for d in detections)
+        unknown_present = any(d.user_id is None for d in detections)
+        blacklisted_present = any(d.is_blacklisted for d in detections)
+
+        # Debug: afficher l'état des détections
+        for d in detections:
+            print(f"[SECURITY] {d.name}: is_owner={d.is_owner}, user_id={d.user_id}, blacklisted={d.is_blacklisted}")
+
+        if owner_present:
+            # Owner présent → tout va bien, reset du compteur
+            self.consecutive_unknown = 0
+            self.last_owner_seen = time.time()
+            print(f"[SECURITY] Owner détecté, compteur reset à 0")
+        elif unknown_present or blacklisted_present:
+            # Inconnu OU blacklisté présent (sans owner) → potentielle menace
+            self.consecutive_unknown += 1
+            reason = "inconnu" if unknown_present else "blacklisté"
+            print(f"[SECURITY] {reason.capitalize()} détecté, compteur: {self.consecutive_unknown}")
+        else:
+            # Utilisateurs connus, non-owner, non-blacklistés → autorisés, ne rien faire
+            print(f"[SECURITY] Utilisateurs autorisés détectés, compteur inchangé: {self.consecutive_unknown}")
 
     def should_trigger_alert(self) -> bool:
         """Vérifie si une alerte doit être déclenchée"""

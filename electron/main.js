@@ -183,6 +183,55 @@ function startBackend() {
     });
 }
 
+// Tuer tout processus sur le port 5000 (nettoyage)
+function killProcessOnPort(port) {
+    return new Promise((resolve) => {
+        if (process.platform === 'win32') {
+            // Windows: approche robuste en 2 étapes
+            const { execSync } = require('child_process');
+            try {
+                // Étape 1: Trouver tous les PIDs sur le port
+                const result = execSync(`netstat -ano | findstr :${port} | findstr LISTENING`, { encoding: 'utf8', timeout: 5000 });
+                const lines = result.trim().split('\n');
+                const pids = new Set();
+
+                lines.forEach(line => {
+                    const parts = line.trim().split(/\s+/);
+                    const pid = parts[parts.length - 1];
+                    if (pid && !isNaN(pid) && pid !== '0') {
+                        pids.add(pid);
+                    }
+                });
+
+                // Étape 2: Tuer chaque PID
+                pids.forEach(pid => {
+                    try {
+                        log(`Killing PID ${pid} sur port ${port}...`);
+                        execSync(`taskkill /F /PID ${pid}`, { timeout: 3000 });
+                        log(`PID ${pid} tué`);
+                    } catch (e) {
+                        log(`Impossible de tuer PID ${pid}: ${e.message}`);
+                    }
+                });
+
+                log(`Port ${port} nettoyé (${pids.size} processus tués)`);
+            } catch (e) {
+                // Pas de processus sur le port, c'est OK
+                log(`Port ${port} déjà libre`);
+            }
+
+            // Attendre un peu que les ports soient vraiment libérés
+            setTimeout(resolve, 500);
+        } else {
+            // Linux/Mac: fuser ou lsof
+            const killCmd = spawn('fuser', ['-k', `${port}/tcp`]);
+            killCmd.on('close', () => resolve());
+            killCmd.on('error', () => resolve());
+            setTimeout(resolve, 1000);
+        }
+    });
+}
+
 // Arrêter le backend
 function stopBackend() {
     if (backendProcess) {
@@ -279,6 +328,10 @@ app.whenReady().then(async () => {
     try {
         await createSplashWindow();
         log('Splash affiche');
+
+        // IMPORTANT: Tuer tout ancien processus sur le port 5000
+        log('Nettoyage du port 5000...');
+        await killProcessOnPort(BACKEND_PORT);
 
         await startBackend();
         log('Backend lance');

@@ -6,6 +6,14 @@ import sys
 import functools
 print = functools.partial(print, file=sys.stderr, flush=True)
 
+# ========== DIAGNOSTIC DE DÉMARRAGE ==========
+print("=" * 50)
+print("[STARTUP] Démarrage du backend AltaLock...")
+print(f"[STARTUP] Python: {sys.version}")
+print(f"[STARTUP] CWD: {os.getcwd()}")
+print(f"[STARTUP] __file__: {__file__}")
+print("=" * 50)
+
 # Ajouter le dossier parent au path pour les imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -49,17 +57,27 @@ def find_and_load_env():
 
 find_and_load_env()
 
+print("[STARTUP] Import Flask...")
 from flask import Flask, jsonify, send_from_directory
+print("[STARTUP] Import SocketIO...")
 from flask_socketio import SocketIO, emit
+print("[STARTUP] Import CORS...")
 from flask_cors import CORS
 import os
 
+print("[STARTUP] Import backend.config...")
 from backend.config import Config
+print("[STARTUP] Import backend.routes...")
 from backend.routes import users_bp, settings_bp, logs_bp
+print("[STARTUP] Import face_recognition_service...")
 from backend.services.face_recognition_service import get_face_service
+print("[STARTUP] Import alert_service...")
 from backend.services.alert_service import get_alert_service
+print("[STARTUP] Import security_service...")
 from backend.services.security_service import get_security_service
+print("[STARTUP] Import database...")
 from backend.models.database import get_db
+print("[STARTUP] Tous les imports OK!")
 
 # Créer l'application Flask
 app = Flask(__name__)
@@ -132,18 +150,20 @@ def get_status():
 @app.route("/api/detection/start", methods=["POST"])
 def start_detection():
     """Démarre la détection"""
+    print("[START] ====== ENDPOINT /api/detection/start APPELÉ ======")
     try:
-        print("[START] Demande de démarrage de la détection...")
+        print("[START] 1. Récupération du face_service...")
         face_service = get_face_service()
+        print(f"[START] 2. face_service obtenu, is_running={face_service.is_running}")
 
         if face_service.is_running:
-            print("[START] Détection déjà en cours")
+            print("[START] Détection déjà en cours, retour early")
             return jsonify({"message": "Détection déjà en cours"})
 
         # Charger les encodages
-        print("[START] Chargement des encodages...")
+        print("[START] 3. Chargement des encodages...")
         count = face_service.load_encodings()
-        print(f"[START] {count} encodages chargés")
+        print(f"[START] 4. {count} encodages chargés")
 
         if count == 0:
             print("[START] ERREUR: Aucun visage enregistré")
@@ -257,7 +277,7 @@ def on_detection(detections: list):
     """Appelé quand des visages sont détectés"""
     face_service = get_face_service()
 
-    # Récupérer le seuil pour le log
+    # Récupérer le seuil pour le log (cache local pour éviter trop d'accès DB)
     from backend.models.settings import SettingsModel
     threshold = SettingsModel.get_int("unknownThreshold") or 9
 
@@ -268,6 +288,25 @@ def on_detection(detections: list):
     # Vérifier si une alerte doit être déclenchée
     if face_service.should_trigger_alert():
         print(f"[ALERTE] Seuil atteint ({threshold})! Déclenchement...")
+
+        # Réinitialiser le compteur IMMÉDIATEMENT pour éviter les alertes en boucle
+        face_service.reset_counters()
+
+        # Lancer l'alerte dans un thread séparé pour ne pas bloquer la détection
+        import threading
+        alert_thread = threading.Thread(
+            target=_handle_alert,
+            args=(detections,),
+            daemon=True
+        )
+        alert_thread.start()
+
+
+def _handle_alert(detections: list):
+    """Gère l'alerte dans un thread séparé (ne bloque pas la détection)"""
+    try:
+        import time
+        face_service = get_face_service()
         alert_service = get_alert_service()
         security_service = get_security_service()
 
@@ -300,7 +339,6 @@ def on_detection(detections: list):
         )
 
         # Attendre que le message vocal soit prononcé avant de verrouiller
-        import time
         time.sleep(3)  # 3 secondes pour laisser le TTS finir
 
         # Réponse de sécurité (verrouillage)
@@ -325,8 +363,12 @@ def on_detection(detections: list):
             "capture_path": capture_path
         })
 
-        # Réinitialiser le compteur
-        face_service.reset_counters()
+        print(f"[ALERTE] Terminée - {intruder_name}")
+
+    except Exception as e:
+        print(f"[ALERTE] Erreur: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 # --- Events WebSocket ---
