@@ -58,6 +58,7 @@ def update_settings():
             "tolerance": (0.1, 1.0, float),
             "camera_index": (0, 10, int),
             "cameraSource": (0, 10, int),
+            "smtp_port": (25, 65535, int),  # Ports SMTP valides
         }
 
         for key, (min_val, max_val, type_fn) in validations.items():

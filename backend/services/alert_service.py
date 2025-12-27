@@ -54,8 +54,9 @@ class AlertService:
 
     def send_email(self, subject: str, body: str, attachment_path: str = None) -> bool:
         """Envoie un email d'alerte"""
-        # Récupérer l'email destinataire depuis les paramètres
-        recipient = SettingsModel.get("alert_email") or SettingsModel.get("alertEmail")
+        # Récupérer l'email destinataire depuis les paramètres (DB puis .env en fallback)
+        import os
+        recipient = SettingsModel.get("alert_email") or SettingsModel.get("alertEmail") or os.environ.get("ALERT_EMAIL", "")
 
         print(f"[EMAIL] Tentative d'envoi à: {recipient}")
 
@@ -63,12 +64,12 @@ class AlertService:
             print("[EMAIL] ERREUR: Pas d'email configuré pour les alertes")
             return False
 
-        # Récupérer la config SMTP depuis les variables d'environnement
+        # Récupérer la config SMTP depuis la DB d'abord, puis .env en fallback
         import os
-        smtp_server = os.environ.get("SMTP_SERVER", "smtp.hostinger.com")
-        smtp_port = int(os.environ.get("SMTP_PORT", "587"))
-        smtp_user = os.environ.get("SMTP_USER", "")
-        smtp_password = os.environ.get("SMTP_PASSWORD", "")
+        smtp_server = SettingsModel.get("smtp_server") or os.environ.get("SMTP_SERVER", "")
+        smtp_port = int(SettingsModel.get("smtp_port") or os.environ.get("SMTP_PORT", "587"))
+        smtp_user = SettingsModel.get("smtp_user") or os.environ.get("SMTP_USER", "")
+        smtp_password = SettingsModel.get("smtp_password") or os.environ.get("SMTP_PASSWORD", "")
 
         print(f"[EMAIL] Config SMTP: server={smtp_server}, port={smtp_port}, user={smtp_user}")
         print(f"[EMAIL] Password configuré: {'Oui' if smtp_password else 'NON'} (longueur: {len(smtp_password)})")

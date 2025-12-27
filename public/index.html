@@ -191,6 +191,37 @@
                         </div>
                     </section>
                     <section class="settings-section card">
+                        <h3>Configuration SMTP (Email)</h3>
+                        <p class="setting-desc" style="margin-bottom: 15px;">Configurez votre serveur SMTP pour recevoir les alertes par email</p>
+                        <div class="setting-item">
+                            <label>Serveur SMTP</label>
+                            <div class="setting-control">
+                                <input type="text" id="smtpServer" placeholder="smtp.gmail.com">
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Port</label>
+                            <div class="setting-control">
+                                <input type="number" id="smtpPort" placeholder="587" value="587" style="width: 100px;">
+                            </div>
+                            <p class="setting-desc">587 pour TLS, 465 pour SSL</p>
+                        </div>
+                        <div class="setting-item">
+                            <label>Email (login)</label>
+                            <div class="setting-control">
+                                <input type="email" id="smtpUser" placeholder="votre@email.com">
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Mot de passe</label>
+                            <div class="setting-control">
+                                <input type="password" id="smtpPassword" placeholder="Mot de passe ou App Password">
+                            </div>
+                            <p class="setting-desc">Pour Gmail, utilisez un "mot de passe d'application"</p>
+                        </div>
+                        <button id="testEmailBtn" class="btn btn-secondary" style="margin-top: 10px;">Tester l'email</button>
+                    </section>
+                    <section class="settings-section card">
                         <h3>Caméra</h3>
                         <div class="setting-item">
                             <label>Source vidéo</label>

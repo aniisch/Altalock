@@ -78,4 +78,9 @@ DEFAULT_SETTINGS = {
     "lockScreenEnabled": "true",
     "sleepAfterLock": "true",
     "soundAlert": "true",
+    # SMTP settings (pour les alertes email) - configurables depuis l'UI
+    "smtp_server": "",
+    "smtp_port": "587",
+    "smtp_user": "",
+    "smtp_password": "",
 }

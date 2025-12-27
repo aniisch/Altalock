@@ -30,6 +30,8 @@ def find_and_load_env():
         exe_dir = os.path.dirname(sys.executable)
         possible_paths.append(os.path.join(exe_dir, '.env'))
         possible_paths.append(os.path.join(exe_dir, '..', '.env'))
+        # À côté de l'exe Electron principal (remonte depuis resources/backend/)
+        possible_paths.append(os.path.join(exe_dir, '..', '..', '.env'))
 
     # 2. Dossier parent (développement)
     possible_paths.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
@@ -237,6 +239,32 @@ def system_info():
     return jsonify(get_system_info())
 
 
+@app.route("/api/test-email", methods=["POST"])
+def test_email():
+    """Envoie un email de test pour vérifier la configuration SMTP"""
+    try:
+        alert_service = get_alert_service()
+        success = alert_service.send_email(
+            subject="[AltaLock] Test de configuration email",
+            body="""
+            <html>
+            <body>
+                <h2>Test de configuration AltaLock</h2>
+                <p>Si vous recevez cet email, votre configuration SMTP est correcte!</p>
+                <p>Les alertes de sécurité seront envoyées à cette adresse.</p>
+            </body>
+            </html>
+            """
+        )
+        if success:
+            return jsonify({"message": "Email de test envoyé avec succès!"})
+        else:
+            return jsonify({"error": "Échec de l'envoi. Vérifiez les logs pour plus de détails."}), 400
+    except Exception as e:
+        print(f"[TEST EMAIL] Erreur: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/data/captures/<path:filename>")
 def serve_capture(filename):
     """Sert les images de captures"""
@@ -289,7 +317,10 @@ def on_detection(detections: list):
     if face_service.should_trigger_alert():
         print(f"[ALERTE] Seuil atteint ({threshold})! Déclenchement...")
 
-        # Réinitialiser le compteur IMMÉDIATEMENT pour éviter les alertes en boucle
+        # IMPORTANT: Activer le cooldown IMMÉDIATEMENT (bloque les alertes pendant 30s)
+        face_service.set_alert_cooldown(30)
+
+        # Réinitialiser le compteur
         face_service.reset_counters()
 
         # Lancer l'alerte dans un thread séparé pour ne pas bloquer la détection
@@ -306,6 +337,7 @@ def _handle_alert(detections: list):
     """Gère l'alerte dans un thread séparé (ne bloque pas la détection)"""
     try:
         import time
+        import threading
         face_service = get_face_service()
         alert_service = get_alert_service()
         security_service = get_security_service()
@@ -328,24 +360,45 @@ def _handle_alert(detections: list):
         if frame is not None:
             capture_path = security_service.capture_frame(frame, "intrusion")
 
-        # Déclencher l'alerte avec message personnalisé
-        alert_service.trigger_alert(
-            alert_type="intrusion",
-            detected_name=intruder_name,
-            image_path=capture_path,
-            user_id=intruder.user_id if intruder else None,
-            custom_message=custom_message,
-            is_blacklisted=is_blacklisted
-        )
+        # 1. ALERTE VOCALE (rapide, ~1-2s)
+        if custom_message:
+            tts_message = custom_message.replace("{nom}", intruder_name)
+        elif is_blacklisted:
+            tts_message = f"Attention! {intruder_name} détecté. Accès interdit!"
+        else:
+            from backend.models.settings import SettingsModel
+            default_message = SettingsModel.get("alert_message") or "Accès non autorisé détecté"
+            tts_message = f"{default_message}. {intruder_name} détecté."
 
-        # Attendre que le message vocal soit prononcé avant de verrouiller
-        time.sleep(3)  # 3 secondes pour laisser le TTS finir
+        alert_service.speak(tts_message)
 
-        # Réponse de sécurité (verrouillage)
+        # 2. Attendre juste le temps du TTS (2s max)
+        time.sleep(2)
+
+        # 3. VERROUILLER IMMÉDIATEMENT (avant l'email!)
+        print(f"[ALERTE] Verrouillage immédiat...")
         security_result = security_service.trigger_security_response(
             frame=frame,
             detected_name=intruder_name
         )
+        print(f"[ALERTE] Écran verrouillé: {security_result['locked']}")
+
+        # 4. Envoyer l'email EN ARRIÈRE-PLAN (ne bloque pas)
+        def send_email_background():
+            try:
+                alert_service.trigger_alert(
+                    alert_type="intrusion",
+                    detected_name=intruder_name,
+                    image_path=capture_path,
+                    user_id=intruder.user_id if intruder else None,
+                    custom_message=custom_message,
+                    is_blacklisted=is_blacklisted
+                )
+            except Exception as e:
+                print(f"[EMAIL BACKGROUND] Erreur: {e}")
+
+        email_thread = threading.Thread(target=send_email_background, daemon=True)
+        email_thread.start()
 
         # Message d'alerte adapté
         if is_blacklisted:

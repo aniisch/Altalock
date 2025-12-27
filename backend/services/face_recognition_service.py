@@ -51,6 +51,7 @@ class FaceRecognitionService:
         # Compteurs pour la logique de sécurité
         self.consecutive_unknown = 0
         self.last_owner_seen = None
+        self._alert_cooldown_until = 0  # Timestamp jusqu'auquel les alertes sont bloquées
 
     def load_encodings(self) -> int:
         """Charge tous les encodages faciaux depuis la base de données"""
@@ -375,11 +376,20 @@ class FaceRecognitionService:
 
     def should_trigger_alert(self) -> bool:
         """Vérifie si une alerte doit être déclenchée"""
+        # Vérifier si on est en période de cooldown
+        if time.time() < self._alert_cooldown_until:
+            return False
+
         # Essayer unknownThreshold (frontend) puis detection_threshold (backend)
         threshold = SettingsModel.get_int("unknownThreshold")
         if threshold == 0:
             threshold = SettingsModel.get_int("detection_threshold") or 4
         return self.consecutive_unknown >= threshold
+
+    def set_alert_cooldown(self, seconds: int = 30):
+        """Bloque les alertes pendant X secondes (évite les doubles alertes)"""
+        self._alert_cooldown_until = time.time() + seconds
+        print(f"[SECURITY] Cooldown activé pour {seconds}s")
 
     def reset_counters(self):
         """Réinitialise les compteurs de sécurité"""

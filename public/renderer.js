@@ -19,7 +19,12 @@ class AltaLockApp {
             soundAlert: true,
             alertEmail: '',
             alertMessage: 'Accès non autorisé détecté',
-            cameraSource: 0
+            cameraSource: 0,
+            // SMTP settings
+            smtp_server: '',
+            smtp_port: 587,
+            smtp_user: '',
+            smtp_password: ''
         };
     }
 
@@ -278,6 +283,12 @@ class AltaLockApp {
             const alertEmail = document.getElementById('alertEmail')?.value || '';
             const cameraSource = document.getElementById('cameraSource')?.value || '0';
 
+            // SMTP settings
+            const smtp_server = document.getElementById('smtpServer')?.value || '';
+            const smtp_port = parseInt(document.getElementById('smtpPort')?.value || '587');
+            const smtp_user = document.getElementById('smtpUser')?.value || '';
+            const smtp_password = document.getElementById('smtpPassword')?.value || '';
+
             this.settings = {
                 unknownThreshold: unknownThreshold,
                 lockScreenEnabled,
@@ -287,7 +298,12 @@ class AltaLockApp {
                 alert_message: alertMessage,
                 alertEmail,
                 alert_email: alertEmail,
-                cameraSource: parseInt(cameraSource)
+                cameraSource: parseInt(cameraSource),
+                // SMTP
+                smtp_server,
+                smtp_port,
+                smtp_user,
+                smtp_password
             };
 
             await this.apiCall('/api/settings', {
@@ -336,6 +352,19 @@ class AltaLockApp {
             this.loadUsers();
         } catch (error) {
             this.showNotification(error.message, 'error');
+        }
+    }
+
+    async testEmail() {
+        try {
+            // Sauvegarder d'abord les paramètres SMTP
+            await this.saveSettings();
+
+            this.showNotification('Envoi de l\'email de test...', 'info');
+            const data = await this.apiCall('/api/test-email', { method: 'POST' });
+            this.showNotification(data.message || 'Email envoyé avec succès!', 'success');
+        } catch (error) {
+            this.showNotification('Erreur: ' + error.message, 'error');
         }
     }
 
@@ -594,6 +623,19 @@ class AltaLockApp {
         // Camera
         const cameraSource = document.getElementById('cameraSource');
         if (cameraSource) cameraSource.value = this.settings.cameraSource || '0';
+
+        // SMTP settings
+        const smtpServer = document.getElementById('smtpServer');
+        if (smtpServer) smtpServer.value = this.settings.smtp_server || '';
+
+        const smtpPort = document.getElementById('smtpPort');
+        if (smtpPort) smtpPort.value = this.settings.smtp_port || '587';
+
+        const smtpUser = document.getElementById('smtpUser');
+        if (smtpUser) smtpUser.value = this.settings.smtp_user || '';
+
+        const smtpPassword = document.getElementById('smtpPassword');
+        if (smtpPassword) smtpPassword.value = this.settings.smtp_password || '';
     }
 
     renderLogs() {
@@ -959,6 +1001,12 @@ class AltaLockApp {
         const importLegacyBtn = document.getElementById('importLegacyBtn');
         if (importLegacyBtn) {
             importLegacyBtn.addEventListener('click', () => this.importLegacyFaces());
+        }
+
+        // Test email button
+        const testEmailBtn = document.getElementById('testEmailBtn');
+        if (testEmailBtn) {
+            testEmailBtn.addEventListener('click', () => this.testEmail());
         }
 
         // Historique - Filtre
