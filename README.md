@@ -2,6 +2,15 @@
 
 Application de sécurité qui utilise la reconnaissance faciale pour protéger un PC des accès non autorisés.
 
+## Version 2.0.0
+
+> **Note de release :** La v2.0.0 est distribuée en **version portable (ZIP)** uniquement.
+> Le backend intègre les DLLs cuDNN nécessaires pour dlib/face_recognition avec support GPU,
+> ce qui porte la taille totale à ~1.5 Go. Cette taille dépasse la limite supportée par
+> l'installeur Squirrel (~1 Go), nous avons donc opté pour une distribution portable.
+>
+> **Installation :** Extraire le ZIP et lancer `altalock.exe`.
+
 ## Fonctionnalités
 
 - **Reconnaissance faciale en temps réel** via webcam
@@ -134,21 +143,25 @@ L'API REST est disponible sur `http://localhost:5000`.
 
 ## Build Release
 
-Pour créer un installateur Windows :
+Pour créer une release Windows :
 
 ```bash
 python build_release.py
 ```
 
 Cela va :
-1. Compiler le backend Python avec PyInstaller
+1. Compiler le backend Python avec PyInstaller (inclut les DLLs cuDNN pour le support GPU)
 2. Packager l'application Electron avec Electron Forge
-3. Générer l'installateur dans `out/make/squirrel.windows/x64/`
+3. Générer le ZIP portable dans `out/make/zip/win32/x64/`
 
-### Fichiers générés
+### Fichier généré
 
-- `AltaLock-X.X.X Setup.exe` - Installateur Windows
-- `AltaLock-win32-x64-X.X.X.zip` - Version portable
+- `AltaLock-win32-x64-X.X.X.zip` - Version portable (~1.5 Go)
+- pas de `AltaLock-X.X.X Setup.exe` - Installateur Windows
+
+> **Pourquoi pas d'installeur ?** Le backend avec les DLLs cuDNN (dlib/face_recognition)
+> pèse ~1 Go, ce qui dépasse la limite de Squirrel. La version portable fonctionne
+> parfaitement : extraire et lancer `altalock.exe`.
 
 ## Technologies
 
