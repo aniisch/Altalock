@@ -78,12 +78,16 @@ if __name__ == "__main__":
             if search_path and search_path.exists():
                 for dll in search_path.glob("cudnn*.dll"):
                     cudnn_dlls.append(dll)
-                    print(f"   Trouvé: {dll.name}")
+                    size_mb = dll.stat().st_size / (1024 * 1024)
+                    print(f"   Trouvé: {dll.name} ({size_mb:.0f} Mo)")
                 if cudnn_dlls:
                     break  # On a trouvé les DLLs, pas besoin de chercher ailleurs
 
         if not cudnn_dlls:
             print("   ATTENTION: Aucune DLL cuDNN trouvée! L'exe pourrait ne pas fonctionner.")
+        else:
+            total_size = sum(dll.stat().st_size for dll in cudnn_dlls) / (1024 * 1024)
+            print(f"   Total DLLs cuDNN: {total_size:.0f} Mo")
 
     # Commande PyInstaller
     print("3. Lancement de PyInstaller...")

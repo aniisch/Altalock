@@ -39,18 +39,10 @@ module.exports = {
   },
   rebuildConfig: {},
   makers: [
+    // ZIP portable - Squirrel ne supporte pas les packages > 1 Go
     {
-      name: '@electron-forge/maker-squirrel',
-      config: {
-        name: 'AltaLock',
-        authors: 'aniisch',
-        description: 'Application de securite avec reconnaissance faciale',
-        iconUrl: 'file://' + path.join(__dirname, 'assets', 'icons', 'icon.ico'),
-        setupIcon: path.join(__dirname, 'assets', 'icons', 'icon.ico'),
-        // Splash personnalisé pendant l'installation (remplace le vert par défaut)
-        loadingGif: path.join(__dirname, 'assets', 'loading.gif'),
-        noMsi: true
-      }
+      name: '@electron-forge/maker-zip',
+      platforms: ['win32']
     },
     {
       name: '@electron-forge/maker-deb',
