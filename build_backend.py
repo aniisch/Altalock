@@ -60,6 +60,31 @@ if __name__ == "__main__":
     models_path = Path(face_recognition_models.__file__).parent / "models"
     print(f"   Modèles trouvés: {models_path}")
 
+    # Trouver les DLLs cuDNN (nécessaires pour dlib avec CUDA)
+    cudnn_dlls = []
+    if sys.platform == "win32":
+        print("2b. Recherche des DLLs cuDNN...")
+        conda_prefix = os.environ.get("CONDA_PREFIX", "")
+        cuda_path = os.environ.get("CUDA_PATH", "")
+
+        search_paths = [
+            Path(conda_prefix) / "Library" / "bin" if conda_prefix else None,
+            Path(cuda_path) / "bin" if cuda_path else None,
+            Path("C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8/bin"),
+            Path("C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.0/bin"),
+        ]
+
+        for search_path in search_paths:
+            if search_path and search_path.exists():
+                for dll in search_path.glob("cudnn*.dll"):
+                    cudnn_dlls.append(dll)
+                    print(f"   Trouvé: {dll.name}")
+                if cudnn_dlls:
+                    break  # On a trouvé les DLLs, pas besoin de chercher ailleurs
+
+        if not cudnn_dlls:
+            print("   ATTENTION: Aucune DLL cuDNN trouvée! L'exe pourrait ne pas fonctionner.")
+
     # Commande PyInstaller
     print("3. Lancement de PyInstaller...")
 
@@ -95,9 +120,14 @@ if __name__ == "__main__":
         f"--add-data", f"backend{sep}backend",
         # IMPORTANT: Ajouter les modèles face_recognition
         f"--add-data", f"{models_path}{sep}face_recognition_models/models",
-        # Fichier d'entrée
-        str(entry_file)
     ]
+
+    # Ajouter les DLLs cuDNN si trouvées
+    for dll in cudnn_dlls:
+        cmd.extend(["--add-binary", f"{dll}{sep}."])
+
+    # Fichier d'entrée (doit être à la fin)
+    cmd.append(str(entry_file))
 
     result = subprocess.run(cmd, cwd=root)
 

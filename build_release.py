@@ -28,6 +28,15 @@ def build():
 
     root = Path(__file__).parent
 
+    # Nettoyer les anciens builds pour éviter le bug "dummy update.exe"
+    print("\nNettoyage des anciens builds...")
+    dirs_to_clean = ["out", "dist", "build"]
+    for dir_name in dirs_to_clean:
+        dir_path = root / dir_name
+        if dir_path.exists():
+            shutil.rmtree(dir_path)
+            print(f"   Supprime: {dir_name}/")
+
     # Vérifier qu'on est dans le bon dossier
     if not (root / "package.json").exists():
         print("ERREUR: package.json non trouvé à la racine.")

@@ -1,6 +1,8 @@
 """Service de reconnaissance faciale"""
 import sys
+import os
 import functools
+
 # Forcer les logs dans stderr
 print = functools.partial(print, file=sys.stderr, flush=True)
 
