@@ -54,8 +54,43 @@ if __name__ == "__main__":
     # Déterminer le séparateur pour --add-data selon l'OS
     sep = ";" if sys.platform == "win32" else ":"
 
+    # Trouver le chemin des modèles face_recognition
+    print("2. Recherche des modèles face_recognition...")
+    import face_recognition_models
+    models_path = Path(face_recognition_models.__file__).parent / "models"
+    print(f"   Modèles trouvés: {models_path}")
+
+    # Trouver les DLLs cuDNN (nécessaires pour dlib avec CUDA)
+    cudnn_dlls = []
+    if sys.platform == "win32":
+        print("2b. Recherche des DLLs cuDNN...")
+        conda_prefix = os.environ.get("CONDA_PREFIX", "")
+        cuda_path = os.environ.get("CUDA_PATH", "")
+
+        search_paths = [
+            Path(conda_prefix) / "Library" / "bin" if conda_prefix else None,
+            Path(cuda_path) / "bin" if cuda_path else None,
+            Path("C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8/bin"),
+            Path("C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.0/bin"),
+        ]
+
+        for search_path in search_paths:
+            if search_path and search_path.exists():
+                for dll in search_path.glob("cudnn*.dll"):
+                    cudnn_dlls.append(dll)
+                    size_mb = dll.stat().st_size / (1024 * 1024)
+                    print(f"   Trouvé: {dll.name} ({size_mb:.0f} Mo)")
+                if cudnn_dlls:
+                    break  # On a trouvé les DLLs, pas besoin de chercher ailleurs
+
+        if not cudnn_dlls:
+            print("   ATTENTION: Aucune DLL cuDNN trouvée! L'exe pourrait ne pas fonctionner.")
+        else:
+            total_size = sum(dll.stat().st_size for dll in cudnn_dlls) / (1024 * 1024)
+            print(f"   Total DLLs cuDNN: {total_size:.0f} Mo")
+
     # Commande PyInstaller
-    print("2. Lancement de PyInstaller...")
+    print("3. Lancement de PyInstaller...")
 
     cmd = [
         "pyinstaller",
@@ -87,9 +122,16 @@ if __name__ == "__main__":
         "--hidden-import", "sqlite3",
         # Ajouter les fichiers source
         f"--add-data", f"backend{sep}backend",
-        # Fichier d'entrée
-        str(entry_file)
+        # IMPORTANT: Ajouter les modèles face_recognition
+        f"--add-data", f"{models_path}{sep}face_recognition_models/models",
     ]
+
+    # Ajouter les DLLs cuDNN si trouvées
+    for dll in cudnn_dlls:
+        cmd.extend(["--add-binary", f"{dll}{sep}."])
+
+    # Fichier d'entrée (doit être à la fin)
+    cmd.append(str(entry_file))
 
     result = subprocess.run(cmd, cwd=root)
 
@@ -97,43 +139,21 @@ if __name__ == "__main__":
         print("ERREUR: PyInstaller a échoué!")
         return False
 
-    # Copier le backend dans le dossier electron
-    print("3. Copie du backend dans frontend/backend/...")
-    electron_backend = root / "frontend" / "backend"
-    electron_backend.mkdir(parents=True, exist_ok=True)
-
-    if sys.platform == "win32":
-        backend_exe = root / "dist" / "altalock-backend.exe"
-        target = electron_backend / "altalock-backend.exe"
-    else:
-        backend_exe = root / "dist" / "altalock-backend"
-        target = electron_backend / "altalock-backend"
-
-    if backend_exe.exists():
-        shutil.copy(backend_exe, target)
-        print(f"   Copié: {target}")
-    else:
-        print(f"ERREUR: Backend non trouvé: {backend_exe}")
-        return False
-
-    # Créer le dossier data
-    print("4. Création du dossier data...")
-    data_dir = electron_backend / "data"
-    data_dir.mkdir(exist_ok=True)
-    (data_dir / "faces").mkdir(exist_ok=True)
-
-    # Nettoyer
-    print("5. Nettoyage...")
+    # Nettoyer le fichier temporaire
+    print("4. Nettoyage du fichier temporaire...")
     if entry_file.exists():
         entry_file.unlink()
+        print(f"   Supprimé: {entry_file}")
 
     print("")
     print("=" * 50)
-    print("BUILD TERMINÉ!")
+    print("BUILD BACKEND TERMINÉ!")
     print("=" * 50)
-    print(f"Backend: {target}")
-    print("")
-    print("Prochaine étape: cd frontend && npm run make:win")
+
+    if sys.platform == "win32":
+        print(f"Backend: dist/altalock-backend.exe")
+    else:
+        print(f"Backend: dist/altalock-backend")
 
     return True
 

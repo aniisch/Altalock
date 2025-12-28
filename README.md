@@ -2,6 +2,15 @@
 
 Application de sécurité qui utilise la reconnaissance faciale pour protéger un PC des accès non autorisés.
 
+## Version 2.0.0
+
+> **Note de release :** La v2.0.0 est distribuée en **version portable (ZIP)** uniquement.
+> Le backend intègre les DLLs cuDNN nécessaires pour dlib/face_recognition avec support GPU,
+> ce qui porte la taille totale à ~1.5 Go. Cette taille dépasse la limite supportée par
+> l'installeur Squirrel (~1 Go), nous avons donc opté pour une distribution portable.
+>
+> **Installation :** Extraire le ZIP et lancer `altalock.exe`.
+
 ## Fonctionnalités
 
 - **Reconnaissance faciale en temps réel** via webcam
@@ -38,7 +47,6 @@ pip install -r requirements.txt
 ### 3. Installer les dépendances Node.js
 
 ```bash
-cd frontend
 npm install
 ```
 
@@ -54,26 +62,16 @@ cp .env.example .env
 
 ## Utilisation
 
-### Démarrer l'application
+### Mode développement
 
 ```bash
-# Démarrer le backend
-python backend/app.py
-
-# Dans un autre terminal, démarrer le frontend
-cd frontend
+# Démarrer l'application (lance le backend automatiquement)
 npm start
-```
-
-Ou utiliser le script npm à la racine :
-
-```bash
-npm run dev
 ```
 
 ### Premier lancement
 
-1.ajoutez un nouvel utilisateur avec le bouton "+ Ajouter"
+1. Ajoutez un nouvel utilisateur avec le bouton "+ Ajouter"
 2. Capturez votre visage via la webcam
 3. Cochez "Propriétaire" pour vous définir comme utilisateur principal
 4. Cliquez sur "Démarrer la surveillance"
@@ -88,26 +86,32 @@ npm run dev
 
 ```
 Altalock/
-├── backend/
-│   ├── app.py              # Application Flask principale
-│   ├── config.py           # Configuration
-│   ├── models/             # Modèles de données (SQLite)
-│   ├── services/           # Services métier
-│   └── routes/             # API REST endpoints
-├── frontend/
-│   ├── main.js             # Process principal Electron
-│   ├── preload.js          # Bridge sécurisé
-│   ├── renderer.js         # Logique UI
-│   ├── index.html          # Interface
-│   └── styles.css          # Styles
-├── data/
-│   ├── altalock.db         # Base de données SQLite
-│   └── faces/              # Images des visages
-├── assets/
-│   └── icons/              # Icônes de l'application
-├── requirements.txt        # Dépendances Python
-├── package.json            # Scripts npm
-└── PLAN.md                 # Plan d'architecture détaillé
+├── backend/                    # Backend Python (Flask)
+│   ├── app.py                  # Application Flask principale
+│   ├── config.py               # Configuration
+│   ├── models/                 # Modèles de données (SQLite)
+│   ├── services/               # Services métier
+│   └── routes/                 # API REST endpoints
+├── electron/                   # Process principal Electron
+│   ├── main.js                 # Point d'entrée Electron
+│   ├── preload.js              # Bridge sécurisé
+│   └── splash.html             # Écran de chargement
+├── public/                     # Frontend (renderer)
+│   ├── index.html              # Interface principale
+│   ├── renderer.js             # Logique UI
+│   └── styles.css              # Styles CSS
+├── assets/                     # Ressources
+│   ├── icons/                  # Icônes (ico, png)
+│   └── loading.gif             # Animation d'installation
+├── data/                       # Données utilisateur
+│   ├── altalock.db             # Base de données SQLite
+│   ├── faces/                  # Images des visages
+│   └── captures/               # Captures de détection
+├── package.json                # Config npm + Electron Forge
+├── forge.config.js             # Config Electron Forge
+├── build_backend.py            # Script build backend
+├── build_release.py            # Script build complet
+└── requirements.txt            # Dépendances Python
 ```
 
 ## API
@@ -137,16 +141,27 @@ L'API REST est disponible sur `http://localhost:5000`.
 | `alert_email` | - | Email pour les alertes |
 | `alert_message` | - | Message vocal personnalisé |
 
-## Build Windows
+## Build Release
 
-Pour créer un installateur Windows :
+Pour créer une release Windows :
 
 ```bash
-cd frontend
-npm run build:win
+python build_release.py
 ```
 
-L'installateur sera dans `dist/`.
+Cela va :
+1. Compiler le backend Python avec PyInstaller (inclut les DLLs cuDNN pour le support GPU)
+2. Packager l'application Electron avec Electron Forge
+3. Générer le ZIP portable dans `out/make/zip/win32/x64/`
+
+### Fichier généré
+
+- `AltaLock-win32-x64-X.X.X.zip` - Version portable (~1.5 Go)
+- pas de `AltaLock-X.X.X Setup.exe` - Installateur Windows
+
+> **Pourquoi pas d'installeur ?** Le backend avec les DLLs cuDNN (dlib/face_recognition)
+> pèse ~1 Go, ce qui dépasse la limite de Squirrel. La version portable fonctionne
+> parfaitement : extraire et lancer `altalock.exe`.
 
 ## Technologies
 
@@ -155,6 +170,7 @@ L'installateur sera dans `dist/`.
 - **Reconnaissance:** face_recognition, OpenCV, dlib
 - **Base de données:** SQLite
 - **Alertes:** pyttsx3 (TTS), smtplib (email)
+- **Build:** PyInstaller, Electron Forge
 
 ## Licence
 
