@@ -20,6 +20,7 @@ class AltaLockApp {
             alertEmail: '',
             alertMessage: 'Accès non autorisé détecté',
             cameraSource: 0,
+            frame_scale: 0.25,  // Qualité de détection (25% par défaut)
             // SMTP settings
             smtp_server: '',
             smtp_port: 587,
@@ -282,6 +283,7 @@ class AltaLockApp {
             const alertMessage = document.getElementById('alertMessage')?.value || 'Accès non autorisé détecté';
             const alertEmail = document.getElementById('alertEmail')?.value || '';
             const cameraSource = document.getElementById('cameraSource')?.value || '0';
+            const frameScale = parseFloat(document.getElementById('frameScale')?.value || '0.25');
 
             // SMTP settings
             const smtp_server = document.getElementById('smtpServer')?.value || '';
@@ -299,6 +301,7 @@ class AltaLockApp {
                 alertEmail,
                 alert_email: alertEmail,
                 cameraSource: parseInt(cameraSource),
+                frame_scale: frameScale,
                 // SMTP
                 smtp_server,
                 smtp_port,
@@ -623,6 +626,15 @@ class AltaLockApp {
         // Camera
         const cameraSource = document.getElementById('cameraSource');
         if (cameraSource) cameraSource.value = this.settings.cameraSource || '0';
+
+        // Frame scale slider
+        const frameScaleInput = document.getElementById('frameScale');
+        const frameScaleValue = document.getElementById('frameScaleValue');
+        if (frameScaleInput && frameScaleValue) {
+            const scale = this.settings.frame_scale || 0.25;
+            frameScaleInput.value = scale;
+            frameScaleValue.textContent = Math.round(scale * 100);
+        }
 
         // SMTP settings
         const smtpServer = document.getElementById('smtpServer');
@@ -989,6 +1001,15 @@ class AltaLockApp {
         if (thresholdInput && thresholdValue) {
             thresholdInput.addEventListener('input', (e) => {
                 thresholdValue.textContent = e.target.value;
+            });
+        }
+
+        // Paramètres - Slider frame scale
+        const frameScaleInput = document.getElementById('frameScale');
+        const frameScaleValue = document.getElementById('frameScaleValue');
+        if (frameScaleInput && frameScaleValue) {
+            frameScaleInput.addEventListener('input', (e) => {
+                frameScaleValue.textContent = Math.round(parseFloat(e.target.value) * 100);
             });
         }
 

@@ -1,6 +1,6 @@
 {
   "name": "altalock",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Application de securite avec reconnaissance faciale",
   "private": true,
   "main": "electron/main.js",

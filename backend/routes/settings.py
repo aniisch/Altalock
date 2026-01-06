@@ -21,6 +21,7 @@ def get_settings():
         # Convertir les booléens et nombres pour le frontend
         bool_keys = ["lockScreenEnabled", "sleepAfterLock", "soundAlert", "auto_lock"]
         int_keys = ["unknownThreshold", "cameraSource", "detection_threshold", "camera_index", "frame_skip"]
+        float_keys = ["frame_scale", "tolerance"]
 
         result = {}
         for key, value in settings.items():
@@ -31,6 +32,11 @@ def get_settings():
                     result[key] = int(value)
                 except (ValueError, TypeError):
                     result[key] = 0
+            elif key in float_keys:
+                try:
+                    result[key] = float(value)
+                except (ValueError, TypeError):
+                    result[key] = 0.25 if key == "frame_scale" else 0.6
             else:
                 result[key] = value
 
@@ -56,6 +62,7 @@ def update_settings():
             "unknownThreshold": (1, 100, int),  # 1-5 secondes * ~3 détections/sec
             "frame_skip": (1, 10, int),
             "tolerance": (0.1, 1.0, float),
+            "frame_scale": (0.1, 1.0, float),  # Échelle de traitement du frame (0.1 = 10% à 1.0 = 100%)
             "camera_index": (0, 10, int),
             "cameraSource": (0, 10, int),
             "smtp_port": (25, 65535, int),  # Ports SMTP valides
