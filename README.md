@@ -4,12 +4,18 @@ Application de sécurité qui utilise la reconnaissance faciale pour protéger u
 
 ## Version 2.1.0
 
-> **Note de release :** La v2.1.0 est distribuée en **version portable (ZIP)** uniquement.
-> Le backend intègre les DLLs cuDNN nécessaires pour dlib/face_recognition avec support GPU,
-> ce qui porte la taille totale à ~1.5 Go. Cette taille dépasse la limite supportée par
-> l'installeur Squirrel (~1 Go), nous avons donc opté pour une distribution portable.
+> **Deux versions disponibles :**
 >
-> **Installation :** Extraire le ZIP et lancer `altalock.exe`.
+> ### Version CPU (Recommandée) - ~200-300 Mo
+> - ✅ **Installeur Windows** (Setup.exe)
+> - ✅ **ZIP portable**
+> - Reconnaissance faciale sur CPU uniquement
+> - Installation rapide et légère
+>
+> ### Version GPU - ~1.5 Go
+> - ✅ **ZIP portable** uniquement (trop lourd pour l'installeur)
+> - Support GPU avec cuDNN (plus rapide sur PC avec GPU NVIDIA)
+> - Pour utilisateurs avancés uniquement
 
 ## Fonctionnalités
 
@@ -144,25 +150,31 @@ L'API REST est disponible sur `http://localhost:5000`.
 
 ## Build Release
 
-Pour créer une release Windows :
+### Version CPU (Recommandée)
+
+Pour créer la version légère avec installeur :
+
+```bash
+python build_release_cpu.py
+```
+
+Génère :
+- `AltaLock-X.X.X Setup.exe` - Installeur Windows (~200-300 Mo)
+- `AltaLock-win32-x64-X.X.X.zip` - Version portable
+
+### Version GPU (Avancée)
+
+Pour créer la version avec support GPU :
 
 ```bash
 python build_release.py
 ```
 
-Cela va :
-1. Compiler le backend Python avec PyInstaller (inclut les DLLs cuDNN pour le support GPU)
-2. Packager l'application Electron avec Electron Forge
-3. Générer le ZIP portable dans `out/make/zip/win32/x64/`
-
-### Fichier généré
-
+Génère :
 - `AltaLock-win32-x64-X.X.X.zip` - Version portable (~1.5 Go)
-- pas de `AltaLock-X.X.X Setup.exe` - Installateur Windows
 
-> **Pourquoi pas d'installeur ?** Le backend avec les DLLs cuDNN (dlib/face_recognition)
-> pèse ~1 Go, ce qui dépasse la limite de Squirrel. La version portable fonctionne
-> parfaitement : extraire et lancer `altalock.exe`.
+> **Note :** La version GPU inclut les DLLs cuDNN pour le support GPU NVIDIA.
+> Le package dépasse 1 Go, donc seul le ZIP portable est disponible (limite de Squirrel).
 
 ## Technologies
 

@@ -148,11 +148,14 @@
 
 ## Journal des modifications
 
-### 05/01/2026 - v2.1.0 Paramètre frame_scale configurable
+### 05/01/2026 - v2.1.0 Paramètre frame_scale configurable & Version CPU
 - ✨ Ajout du paramètre `frame_scale` configurable dans les paramètres
 - ✨ Interface utilisateur mise à jour avec un slider pour ajuster la qualité de détection
-- 📝 Documentation de la détection multi-échelles dans les améliorations futures
 - 🔧 Amélioration de la détection de visages à distance (augmenter frame_scale)
+- 🔧 Correction du redimensionnement des boîtes de détection
+- 📦 **Nouvelle version CPU-only** : Build léger (~200-300 Mo) avec installeur Windows
+- 📦 Script `build_release_cpu.py` pour version sans DLLs cuDNN
+- 📝 Documentation de la détection multi-échelles dans les améliorations futures
 
 ### 24/12/2025 - v2.0 Architecture complète
 - ✨ Refonte complète de l'architecture

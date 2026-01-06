@@ -39,7 +39,19 @@ module.exports = {
   },
   rebuildConfig: {},
   makers: [
-    // ZIP portable - Squirrel ne supporte pas les packages > 1 Go
+    // Installeur Squirrel (pour version CPU légère < 1 Go)
+    {
+      name: '@electron-forge/maker-squirrel',
+      config: {
+        name: 'AltaLock',
+        authors: 'aniisch',
+        description: 'Application de sécurité avec reconnaissance faciale',
+        iconUrl: 'https://raw.githubusercontent.com/aniisch/Altalock/main/assets/icons/icon.ico',
+        setupIcon: path.join(__dirname, 'assets', 'icons', 'icon.ico'),
+        loadingGif: path.join(__dirname, 'assets', 'loading.gif')
+      }
+    },
+    // ZIP portable (toujours disponible)
     {
       name: '@electron-forge/maker-zip',
       platforms: ['win32']
