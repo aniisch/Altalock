@@ -140,11 +140,11 @@ class FaceRecognitionService:
 
             # Remettre à l'échelle les coordonnées
             top, right, bottom, left = face_location
-            scale_factor = int(1 / scale)
-            top *= scale_factor
-            right *= scale_factor
-            bottom *= scale_factor
-            left *= scale_factor
+            # Diviser par scale pour retrouver les coordonnées originales
+            top = int(top / scale)
+            right = int(right / scale)
+            bottom = int(bottom / scale)
+            left = int(left / scale)
 
             detection = DetectionResult(
                 user_id=result["user_id"],

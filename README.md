@@ -2,9 +2,9 @@
 
 Application de sécurité qui utilise la reconnaissance faciale pour protéger un PC des accès non autorisés.
 
-## Version 2.0.0
+## Version 2.1.0
 
-> **Note de release :** La v2.0.0 est distribuée en **version portable (ZIP)** uniquement.
+> **Note de release :** La v2.1.0 est distribuée en **version portable (ZIP)** uniquement.
 > Le backend intègre les DLLs cuDNN nécessaires pour dlib/face_recognition avec support GPU,
 > ce qui porte la taille totale à ~1.5 Go. Cette taille dépasse la limite supportée par
 > l'installeur Squirrel (~1 Go), nous avons donc opté pour une distribution portable.
@@ -136,6 +136,7 @@ L'API REST est disponible sur `http://localhost:5000`.
 |-----------|--------|-------------|
 | `detection_threshold` | 4 | Nombre de détections avant alerte |
 | `frame_skip` | 2 | Traiter 1 frame sur N |
+| `frame_scale` | 0.25 | Qualité de détection (0.25 = 25%, 1.0 = 100%) |
 | `tolerance` | 0.6 | Seuil de similarité faciale |
 | `auto_lock` | true | Verrouiller automatiquement |
 | `alert_email` | - | Email pour les alertes |

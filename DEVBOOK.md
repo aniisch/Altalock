@@ -1,8 +1,8 @@
 # AltaLock - Journal de Développement
 
 ## État du projet
-🟢 **v2.0 - Architecture implémentée**
-📅 Dernière mise à jour : 24/12/2025
+🟢 **v2.1 - Paramètre frame_scale configurable**
+📅 Dernière mise à jour : 05/01/2026
 
 ## Légende
 - ✅ Terminé
@@ -148,6 +148,12 @@
 
 ## Journal des modifications
 
+### 05/01/2026 - v2.1.0 Paramètre frame_scale configurable
+- ✨ Ajout du paramètre `frame_scale` configurable dans les paramètres
+- ✨ Interface utilisateur mise à jour avec un slider pour ajuster la qualité de détection
+- 📝 Documentation de la détection multi-échelles dans les améliorations futures
+- 🔧 Amélioration de la détection de visages à distance (augmenter frame_scale)
+
 ### 24/12/2025 - v2.0 Architecture complète
 - ✨ Refonte complète de l'architecture
 - ✨ Backend Flask avec API REST et WebSocket
@@ -170,19 +176,11 @@
 
 ## Prochaines étapes
 
-1. **Tests sur Windows**
-   - Vérifier le verrouillage Windows
-   - Tester la webcam
-   - Valider l'envoi d'emails
 
-2. **Import des utilisateurs existants**
-   - Utiliser `/api/import-legacy` pour importer les 22 visages de l'ancienne app
-
-3. **Packaging Windows**
-   - `cd frontend && npm run build:win`
-   - Tester l'installateur
-
-4. **Améliorations futures**
+**Améliorations futures**
    - Intégration SharePoint
    - Mode multi-utilisateurs owners
    - Historique des captures avec galerie
+   - **Détection multi-échelles** : Implémenter une détection à plusieurs échelles pour améliorer la reconnaissance des visages éloignés
+     - Si aucun visage détecté avec l'échelle actuelle, réessayer avec un zoom digital sur le centre
+     - Permettrait une meilleure détection à distance sans ralentissement constant

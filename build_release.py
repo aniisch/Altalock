@@ -23,7 +23,7 @@ def run_command(cmd, cwd=None, shell=True):
 
 def build():
     print("=" * 60)
-    print("BUILD RELEASE - AltaLock v2.0")
+    print("BUILD RELEASE - AltaLock v2.1")
     print("=" * 60)
 
     root = Path(__file__).parent
