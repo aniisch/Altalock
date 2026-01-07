@@ -10,6 +10,8 @@ Application de sécurité qui utilise la reconnaissance faciale pour protéger u
 > l'installeur Squirrel (~1 Go), nous avons donc opté pour une distribution portable.
 >
 > **Installation :** Extraire le ZIP et lancer `altalock.exe`.
+>
+> **Version CPU alternative :** Une version CPU-only légère (~700 Mo) avec installeur est disponible sur la branche `dev-cpu`.
 
 ## Fonctionnalités
 
