@@ -114,6 +114,7 @@ class FaceRecognitionService:
     def process_frame(self, frame: np.ndarray) -> Tuple[np.ndarray, List[DetectionResult]]:
         """
         Traite un frame et retourne les détections de visages.
+        Utilise une détection multi-échelles si aucun visage n'est trouvé initialement.
 
         Args:
             frame: Image BGR depuis OpenCV
@@ -121,16 +122,30 @@ class FaceRecognitionService:
         Returns:
             Tuple (frame annoté, liste des détections)
         """
-        scale = SettingsModel.get_float("frame_scale") or 0.25
+        base_scale = SettingsModel.get_float("frame_scale") or 0.25
         tolerance = SettingsModel.get_float("tolerance") or 0.6
+        detection_model = SettingsModel.get("detection_model") or "hog"  # hog=CPU rapide, cnn=GPU précis
 
-        # Réduire la taille pour plus de performance
-        small_frame = cv2.resize(frame, (0, 0), fx=scale, fy=scale)
-        rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+        # Essayer plusieurs échelles si aucun visage détecté
+        scales_to_try = [base_scale, min(base_scale * 1.5, 1.0), min(base_scale * 2.0, 1.0)]
 
-        # Détecter les visages
-        face_locations = face_recognition.face_locations(rgb_small_frame)
-        face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
+        face_locations = []
+        face_encodings = []
+        used_scale = base_scale
+
+        for scale in scales_to_try:
+            # Réduire la taille pour plus de performance
+            small_frame = cv2.resize(frame, (0, 0), fx=scale, fy=scale)
+            rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+
+            # Détecter les visages avec le modèle choisi (hog ou cnn)
+            face_locations = face_recognition.face_locations(rgb_small_frame, model=detection_model)
+
+            if face_locations:
+                # Visages trouvés ! Encoder et sortir
+                face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
+                used_scale = scale
+                break
 
         detections = []
 
@@ -140,11 +155,11 @@ class FaceRecognitionService:
 
             # Remettre à l'échelle les coordonnées
             top, right, bottom, left = face_location
-            # Diviser par scale pour retrouver les coordonnées originales
-            top = int(top / scale)
-            right = int(right / scale)
-            bottom = int(bottom / scale)
-            left = int(left / scale)
+            # Diviser par used_scale pour retrouver les coordonnées originales
+            top = int(top / used_scale)
+            right = int(right / used_scale)
+            bottom = int(bottom / used_scale)
+            left = int(left / used_scale)
 
             detection = DetectionResult(
                 user_id=result["user_id"],

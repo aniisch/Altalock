@@ -21,6 +21,7 @@ class AltaLockApp {
             alertMessage: 'Accès non autorisé détecté',
             cameraSource: 0,
             frame_scale: 0.25,  // Qualité de détection (25% par défaut)
+            detection_model: 'hog',  // Modèle de détection (hog=CPU, cnn=GPU)
             // SMTP settings
             smtp_server: '',
             smtp_port: 587,
@@ -284,6 +285,7 @@ class AltaLockApp {
             const alertEmail = document.getElementById('alertEmail')?.value || '';
             const cameraSource = document.getElementById('cameraSource')?.value || '0';
             const frameScale = parseFloat(document.getElementById('frameScale')?.value || '0.25');
+            const detectionModel = document.querySelector('input[name="detectionModel"]:checked')?.value || 'hog';
 
             // SMTP settings
             const smtp_server = document.getElementById('smtpServer')?.value || '';
@@ -302,6 +304,7 @@ class AltaLockApp {
                 alert_email: alertEmail,
                 cameraSource: parseInt(cameraSource),
                 frame_scale: frameScale,
+                detection_model: detectionModel,
                 // SMTP
                 smtp_server,
                 smtp_port,
@@ -635,6 +638,13 @@ class AltaLockApp {
             frameScaleInput.value = scale;
             frameScaleValue.textContent = Math.round(scale * 100);
         }
+
+        // Detection model radio buttons
+        const detectionModel = this.settings.detection_model || 'hog';
+        const radioToSelect = detectionModel === 'cnn' ?
+            document.getElementById('detectionModelCnn') :
+            document.getElementById('detectionModelHog');
+        if (radioToSelect) radioToSelect.checked = true;
 
         // SMTP settings
         const smtpServer = document.getElementById('smtpServer');

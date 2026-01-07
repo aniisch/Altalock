@@ -148,11 +148,14 @@
 
 ## Journal des modifications
 
-### 05/01/2026 - v2.1.0 Paramètre frame_scale configurable
-- ✨ Ajout du paramètre `frame_scale` configurable dans les paramètres
-- ✨ Interface utilisateur mise à jour avec un slider pour ajuster la qualité de détection
-- 📝 Documentation de la détection multi-échelles dans les améliorations futures
-- 🔧 Amélioration de la détection de visages à distance (augmenter frame_scale)
+### 07/01/2026 - v2.1.0 Détection multi-échelles et modèle HOG/CNN
+- ✨ **Détection multi-échelles intelligente** : essaie automatiquement plusieurs échelles si aucun visage trouvé
+- ✨ **Choix du modèle de détection** : HOG (CPU rapide) ou CNN (GPU précis)
+- ✨ Paramètre `detection_model` avec interface radio buttons
+- ✨ Paramètre `frame_scale` configurable (qualité de détection ajustable)
+- 🔧 Correction du bug de redimensionnement des boîtes de détection
+- 🔧 Amélioration drastique de la détection à distance
+- 📦 Version CPU-only légère disponible (branche dev-cpu)
 
 ### 24/12/2025 - v2.0 Architecture complète
 - ✨ Refonte complète de l'architecture
@@ -176,11 +179,10 @@
 
 ## Prochaines étapes
 
-
 **Améliorations futures**
    - Intégration SharePoint
    - Mode multi-utilisateurs owners
    - Historique des captures avec galerie
-   - **Détection multi-échelles** : Implémenter une détection à plusieurs échelles pour améliorer la reconnaissance des visages éloignés
-     - Si aucun visage détecté avec l'échelle actuelle, réessayer avec un zoom digital sur le centre
-     - Permettrait une meilleure détection à distance sans ralentissement constant
+   - Statistiques et graphiques de détection
+   - Mode apprentissage automatique pour améliorer la reconnaissance
+   - Export/import de la base de données utilisateurs
