@@ -16,9 +16,13 @@ Application de sécurité qui utilise la reconnaissance faciale pour protéger u
 ## Fonctionnalités
 
 - **Reconnaissance faciale en temps réel** via webcam
+- **Détection multi-échelles intelligente** - améliore la reconnaissance à distance
+- **Choix du modèle de détection** - HOG (CPU rapide) ou CNN (GPU précis)
+- **Paramètres ajustables** - qualité de détection, tolérance, seuil d'alerte
 - **Verrouillage automatique** si visage non autorisé détecté
 - **Alertes** par email et vocales (text-to-speech)
 - **Gestion des utilisateurs** avec multi-visages par personne
+- **Liste noire** avec messages d'alerte personnalisés
 - **Interface moderne** avec dashboard temps réel
 - **Icône système** pour surveillance en arrière-plan
 
@@ -139,6 +143,7 @@ L'API REST est disponible sur `http://localhost:5000`.
 | `detection_threshold` | 4 | Nombre de détections avant alerte |
 | `frame_skip` | 2 | Traiter 1 frame sur N |
 | `frame_scale` | 0.25 | Qualité de détection (0.25 = 25%, 1.0 = 100%) |
+| `detection_model` | hog | Modèle de détection : `hog` (CPU rapide) ou `cnn` (GPU précis) |
 | `tolerance` | 0.6 | Seuil de similarité faciale |
 | `auto_lock` | true | Verrouiller automatiquement |
 | `alert_email` | - | Email pour les alertes |

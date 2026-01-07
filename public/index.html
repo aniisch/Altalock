@@ -241,6 +241,20 @@
                             </div>
                             <p class="setting-desc">Augmentez pour améliorer la détection à distance (consomme plus de ressources)</p>
                         </div>
+                        <div class="setting-item">
+                            <label>Modèle de détection</label>
+                            <div class="setting-control" style="display: flex; gap: 20px;">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="radio" name="detectionModel" id="detectionModelHog" value="hog" checked>
+                                    <span>HOG (CPU - Rapide)</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="radio" name="detectionModel" id="detectionModelCnn" value="cnn">
+                                    <span>CNN (GPU - Précis)</span>
+                                </label>
+                            </div>
+                            <p class="setting-desc">HOG utilise le CPU (rapide), CNN utilise le GPU si disponible (plus précis mais plus lent)</p>
+                        </div>
                     </section>
                     <div class="settings-actions">
                         <button id="saveSettingsBtn" class="btn btn-primary">Sauvegarder</button>

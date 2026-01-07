@@ -81,6 +81,13 @@ def update_settings():
                         "error": f"{key} doit être un nombre valide"
                     }), 400
 
+        # Valider detection_model (hog ou cnn)
+        if "detection_model" in data:
+            if data["detection_model"] not in ["hog", "cnn"]:
+                return jsonify({
+                    "error": "detection_model doit être 'hog' ou 'cnn'"
+                }), 400
+
         # Mettre à jour tous les paramètres
         SettingsModel.set_many(data)
 
